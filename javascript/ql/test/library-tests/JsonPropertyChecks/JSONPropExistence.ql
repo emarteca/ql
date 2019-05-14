@@ -136,11 +136,16 @@ class ExplicitUndefinedPropCheckSanitizer extends TaintTracking::UndefinedCheckS
 
 from JsonParserCallConfig cfg, DataFlow::Node src, DataFlow::Node sink
 where cfg.hasFlow(src, sink) and
-not src = sink
-select src, sink
+not src = sink and 
+not (cfg.isSanitizerGuard( sink) 
+	and exists( ConditionGuardNode cgn | sink.asExpr() =  cgn.getTest().getAChildExpr*())) and
+//(sink.asExpr().getAChildExpr*() instanceof PropAccess or sink.asExpr() instanceof PropAccess) and
+sink.asExpr() instanceof PropAccess and
+sink.asExpr().getFile().toString().regexpMatch(".*JsonInteropRegistryProvider.*") 
+select src, sink.asExpr()
 
-//from PropAccess pa
-//where pa.getPropertyName() = 'k'
+//from RValue pa
+//where pa.getFile().toString().regexpMatch(".*tst.*") 
 //select pa
 
 
