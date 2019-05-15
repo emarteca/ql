@@ -1,13 +1,14 @@
 /**
  * @name JSONPropExistence
  * @description Insert description here...
- * @kind problem
+ * @ kind problem
  * @problem.severity warning
  */
 
 import javascript
 import semmle.javascript.RestrictedLocations
 private import semmle.javascript.dataflow.internal.AccessPaths
+//import DataFlow::PathGraph
 
 /**
  * Custom configuration for JsonParserCall outputs flowing to property accesses.
@@ -25,6 +26,7 @@ private import semmle.javascript.dataflow.internal.AccessPaths
  	}
   	
  	override predicate isSanitizerGuard( TaintTracking::SanitizerGuardNode sgn) {
+ 		sgn instanceof ImplicitNullCheckSanitizer or
  		sgn instanceof PropCheckSanitizer or 
  		sgn instanceof ExplicitPropCheckSanitizer or
  		sgn instanceof InPropCheckSanitizer or
@@ -127,22 +129,56 @@ class ExplicitUndefinedPropCheckSanitizer extends TaintTracking::UndefinedCheckS
 	
 }
 
+//from EnhancedForLoop efl 
+//where efl.getFile().toString().regexpMatch(".*JsonInteropRegistryProvider.*") 
+//select efl, efl.getIterator(), efl.getAnIterationVariable(), efl.getIterationDomain(), efl.getFirstControlFlowNode()
 
 //
-//from ExplicitPropCheckSanitizer jvincs, Expr e
+//from ImplicitNullCheckSanitizer jvincs, Expr e
 //where jvincs.sanitizes(true, e) and
-//e instanceof PropAccess
+//e instanceof PropAccess and
+//e.getFile().toString().regexpMatch(".*JsonInteropRegistryProvider.*") 
 //select jvincs, e//, e.(PropAccess).getPropertyName(), jvincs.getArgument(0).getStringValue() //, e.getAQlClass()
 
-from JsonParserCallConfig cfg, DataFlow::Node src, DataFlow::Node sink
-where cfg.hasFlow(src, sink) and
+/*from JsonParserCallConfig cfg, DataFlow::PathNode src, DataFlow::PathNode sink
+where cfg.hasFlowPath(src, sink) and
 not src = sink and 
-not (cfg.isSanitizerGuard( sink) 
-	and exists( ConditionGuardNode cgn | sink.asExpr() =  cgn.getTest().getAChildExpr*())) and
+not (cfg.isSanitizerGuard( sink.getNode()) 
+	and exists( ConditionGuardNode cgn | sink.getNode().asExpr() =  cgn.getTest().getAChildExpr*())) and
 //(sink.asExpr().getAChildExpr*() instanceof PropAccess or sink.asExpr() instanceof PropAccess) and
-sink.asExpr() instanceof PropAccess and
+sink.getNode().asExpr() instanceof PropAccess //and
+//sink.getNode().asExpr().getFile().toString().regexpMatch(".*JsonInteropRegistryProvider.*") 
+select sink.getNode(), src, sink, "y $@", src.getNode(), "aaa"*/
+
+predicate isDirectUseOfEnhancedFor( Expr e) {
+	exists( EnhancedForLoop efl | 
+					e.(PropAccess).getPropertyNameExpr() = efl.getAnIterationVariable().getAnAssignedExpr() and
+					e.(PropAccess).getBase() = efl.getIterationDomain()
+	)
+}
+
+predicate res( JsonParserCallConfig cfg, DataFlow::Node src, DataFlow::Node sink, Expr sink2) {
+	cfg.hasFlow(src, sink) and
+	not src = sink and 
+	not (cfg.isSanitizerGuard( sink) and 
+		exists( ConditionGuardNode cgn | sink.asExpr() =  cgn.getTest().getAChildExpr*())) and
+
+(sink.asExpr().getParentExpr() = sink2 and 
+	not ((sink2 instanceof AssignExpr or sink2 instanceof VariableDeclarator) and
+		exists( ConditionGuardNode cgn | sink.getASuccessor*().asExpr() = cgn.getTest().getAChildExpr*() 
+	    ) 
+	    or sink2 instanceof LogicalBinaryExpr
+		)
+)  
+and
+sink.asExpr() instanceof PropAccess and 
+not isDirectUseOfEnhancedFor( sink.asExpr())
+}
+
+from JsonParserCallConfig cfg, DataFlow::Node src, DataFlow::Node sink, Expr sink2//DataFlow::Node sink2
+where res( cfg, src, sink, sink2) and
 sink.asExpr().getFile().toString().regexpMatch(".*JsonInteropRegistryProvider.*") 
-select src, sink.asExpr()
+select src, sink.asExpr(), sink2//, sink2.getAQlClass() //, sink.getASuccessor() //.asExpr()
 
 //from RValue pa
 //where pa.getFile().toString().regexpMatch(".*tst.*") 
