@@ -63,3 +63,10 @@ y = x.m + 12						// the assert sanitized x.m
 
 
 
+var v = JSON.parse( input);
+if( !v) 
+	throw new Error("uh oh")
+
+console.log( v.k)
+
+
