@@ -63,7 +63,7 @@ y = x.m + 12						// the assert sanitized x.m
 
 
 
-var v = JSON.parse( input);
+var v = JSON.parse( '"Some random string"');
 if( !v) 
 	throw new Error("uh oh")
 
