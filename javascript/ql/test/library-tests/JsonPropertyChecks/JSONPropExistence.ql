@@ -30,7 +30,8 @@ class JsonParserCallConfig extends DataFlow::Configuration {
     sgn instanceof InPropCheckBarrier or
     sgn instanceof ExplicitUndefinedPropCheckBarrier or
     sgn instanceof AdHocIsCheckBarrier or
-    sgn instanceof AdHocHasCheckBarrier
+    sgn instanceof AdHocHasCheckBarrier or
+    sgn instanceof ExplicitNullCheckBarrier
   }
 
   // this used to be the AdHocAssertSanitizer
@@ -105,6 +106,26 @@ class ImplicitNullCheckBarrier extends DataFlow::BarrierGuardNode, DataFlow::Nod
   }
   //override predicate appliesTo( TaintTracking::Configuration cfg) { any() }
 }
+
+class ExplicitNullCheckBarrier extends DataFlow::BarrierGuardNode,
+  DataFlow::ValueNode {
+  
+  override EqualityTest astNode;
+
+  override predicate blocks(boolean outcome, Expr e) {
+    outcome = astNode.getPolarity().booleanNot() and
+    
+    exists(AccessPath bap, BasicBlock bb, ConditionGuardNode cgn |
+      (bap.getAnInstanceIn(bb) = e.(PropAccess).getBase() or bap.getAnInstanceIn(bb) = e) and
+      bap.getAnInstance() = astNode.getAnOperand().(VarAccess).getVariable().getAnAccess() and
+      // we need to make sure that the current sanitizer dominates the basic block containing the expression
+      // but how to check this? since the sanitizer is not a control flow node
+      cgn.getTest() = this.asExpr() and
+      cgn.dominates(bb)
+    ) 
+  }
+}
+
 
 /**
  * Param check sanitizer:
@@ -305,7 +326,7 @@ predicate isBlanketWhitelistedAccess(PropAccess pe) {
 
 predicate res(JsonParserCallConfig cfg, DataFlow::Node src, DataFlow::Node sink, Expr sink2) {
   cfg.hasFlow(src, sink) and
-  //not src = sink and
+ // not src = sink and
   sink.asExpr().getParentExpr() = sink2 
 //    not (
 //      cfg.isSanitizerGuard(sink) and
@@ -342,18 +363,18 @@ predicate res(JsonParserCallConfig cfg, DataFlow::Node src, DataFlow::Node sink,
 //select sink, src, sink, "weee" //, sink2 //, sink2.getAQlClass() //, sink.asExpr().getAQlClass() //, sink.getASuccessor() //.asExpr()
 
 //
-from JsonParserCallConfig cfg, DataFlow::Node src, DataFlow::Node sink, Expr sink2 //DataFlow::Node sink2
-where
-  not exists(Test t | src.asExpr().getFile() = t.getFile() or sink.asExpr().getFile() = t.getFile()) and
-  //sink.asExpr().getFile().toString().regexpMatch(".*nameframe.max.html.*") and
-  res(cfg, src, sink, sink2)// and
-  and sink2.getFile().toString().regexpMatch(".*imaVideo.*") 
-//  and not cfg.isSanitizer(sink)
-//  not sink2 instanceof AssignExpr and
-//  not sink2 instanceof ObjectExpr
-//sink.asExpr().getFile().toString().regexpMatch(".*JsonInteropRegistryProvider.*")
-//select sink.getNode(), src, sink, "y $@", src.getNode(), "aaa"
-select src, sink, sink2 //, sink2.getAQlClass(), sink.asExpr().getAQlClass()
+//from JsonParserCallConfig cfg, DataFlow::Node src, DataFlow::Node sink, Expr sink2 //DataFlow::Node sink2
+//where
+//  not exists(Test t | src.asExpr().getFile() = t.getFile() or sink.asExpr().getFile() = t.getFile()) and
+//  //sink.asExpr().getFile().toString().regexpMatch(".*nameframe.max.html.*") and
+//  res(cfg, src, sink, sink2)// and
+//  and sink2.getFile().toString().regexpMatch(".*simple.*") 
+////  and not cfg.isSanitizer(sink)
+////  not sink2 instanceof AssignExpr and
+////  not sink2 instanceof ObjectExpr
+////sink.asExpr().getFile().toString().regexpMatch(".*JsonInteropRegistryProvider.*")
+////select sink.getNode(), src, sink, "y $@", src.getNode(), "aaa"
+//select src, sink.asExpr(), sink2 //, sink2.getAQlClass(), sink.asExpr().getAQlClass()
 
 //e = this.asExpr().(VarAccess).getVariable().getAnAccess() or
 //     e.(PropAccess).getBase() = this.asExpr().(VarAccess).getVariable().getAnAccess()
@@ -376,9 +397,9 @@ select src, sink, sink2 //, sink2.getAQlClass(), sink.asExpr().getAQlClass()
 //select prn, toSanitize
 
 
-//from ImplicitNullCheckBarrier jvincs, Expr e
-//where jvincs.blocks(true, e) and
-////e instanceof PropAccess and
-//e.getFile().toString().regexpMatch(".*imaVideo.*")
-//select jvincs, e //jvincs.getAnArgument().asExpr().getAChildExpr*()//, e//, e.(PropAccess).getPropertyNameExpr().getUnderlyingValue()
+from ExplicitNullCheckBarrier jvincs, Expr e
+where jvincs.blocks(e.flow()) and
+//e instanceof PropAccess and
+e.getFile().toString().regexpMatch(".*simple.*")
+select jvincs, e //jvincs.getAnArgument().asExpr().getAChildExpr*()//, e//, e.(PropAccess).getPropertyNameExpr().getUnderlyingValue()
 
