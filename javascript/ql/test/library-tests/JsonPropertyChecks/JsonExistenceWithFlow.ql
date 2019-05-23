@@ -49,11 +49,11 @@ class JsonParserCallConfig extends DataFlow::Configuration {
 
   override predicate isBarrierGuard(DataFlow::BarrierGuardNode lbgn) {
     lbgn instanceof InPropCheckBarrier or
+    lbgn instanceof InstanceOfCheckBarrier or
     lbgn instanceof AdHocIsCheckBarrier or
     lbgn instanceof AdHocHasCheckBarrier or
     lbgn instanceof ExplicitUndefinedCheckBarrier or
-    lbgn instanceof PropCheckBarrier or
-    lbgn instanceof EnhancedForBarrier
+    lbgn instanceof PropCheckBarrier
   }
 
   private DataFlow::Node getALBarrierDomNode() {
@@ -71,22 +71,23 @@ class JsonParserCallConfig extends DataFlow::Configuration {
   // this is equivalent to the isBarrier that we had before
   override predicate isLabeledBarrier(DataFlow::Node dfn, DataFlow::FlowLabel lbl) {
     lbl instanceof MaybeNullLabel and
-    exists(DataFlow::Node ddn, AccessPath bap |
-      ddn = getALBarrierDomNode() and
-      (
-        bap.getAnInstance() = ddn.(DataFlow::PropRef).getBase().asExpr() or
-        bap.getAnInstance() = ddn
-              .(DataFlow::CallNode)
-              .getAnArgument()
-              .asExpr()
-              .getAChildExpr*()
-              .(VarAccess)
-              .getVariable()
-              .(LocalVariable)
-              .getAnAccess()
-      ) and
-      bap.getAnInstance() = dfn.asExpr() and
-      strictlyDominates(ddn, dfn)
+    (
+      exists(DataFlow::Node ddn, AccessPath bap |
+        ddn = getALBarrierDomNode() and
+        (
+          bap.getAnInstance() = ddn.(DataFlow::PropRef).getBase().asExpr() or
+          bap.getAnInstance() = ddn.(DataFlow::CallNode).getAnArgument().asExpr().getAChildExpr*() or
+          bap.getAnInstance() = ddn.(DataFlow::InvokeNode).asExpr()
+        ) and
+        bap.getAnInstance() = dfn.asExpr() and
+        strictlyDominates(ddn, dfn)
+      )
+      or
+      exists(EnhancedForLoop efl, AccessPath ap |
+        ap.getAnInstance() = efl.getIterationDomain() and
+        ap.getAnInstanceIn(dfn.getBasicBlock()) = dfn.asExpr() and
+        efl.getBody().getBasicBlock().(ReachableBasicBlock).dominates(dfn.getBasicBlock())
+      )
     )
     or
     super.isLabeledBarrier(dfn, lbl)
@@ -109,17 +110,6 @@ class PropCheckBarrier extends DataFlow::LabeledBarrierGuardNode, DataFlow::Valu
   override DataFlow::FlowLabel getALabel() { result instanceof MaybeNullLabel }
 }
 
-class EnhancedForBarrier extends DataFlow::LabeledBarrierGuardNode, DataFlow::ValueNode {
-  EnhancedForBarrier() { exists(EnhancedForLoop efl | this.asExpr() = efl.getIterationDomain()) }
-
-  override predicate blocks(boolean outcome, Expr e) {
-    outcome = true and
-    this.asExpr() = e
-  }
-
-  override DataFlow::FlowLabel getALabel() { result instanceof MaybeNullLabel }
-}
-
 // here, we're looking at conditions of the form 'f' in x
 // in this case, the only thing we know is that x is not null
 // so, we sanitize x but we don't know anything about x.f itself
@@ -129,6 +119,18 @@ class InPropCheckBarrier extends DataFlow::LabeledBarrierGuardNode, DataFlow::Va
   override predicate blocks(boolean outcome, Expr e) {
     outcome = true and
     e = astNode.(InExpr).getRightOperand()
+  }
+
+  // label we're removing
+  override DataFlow::FlowLabel getALabel() { result instanceof MaybeNullLabel }
+}
+
+class InstanceOfCheckBarrier extends DataFlow::LabeledBarrierGuardNode, DataFlow::ValueNode {
+  override InstanceofExpr astNode;
+
+  override predicate blocks(boolean outcome, Expr e) {
+    outcome = true and
+    e = astNode.(InstanceofExpr).getLeftOperand()
   }
 
   // label we're removing
@@ -193,7 +195,5 @@ where
   sink.asExpr().getParentExpr() = sink2
 //and sink2.getFile().toString().regexpMatch(".*updated.*")
 select src, sink.asExpr(), sink2 //, sink2.getAQlClass(), sink.asExpr().getAQlClass()
-
-
 //from EnhancedForLoop efl
-//select efl.getIterator(), efl.getIteratorExpr(), efl.getIterationDomain(), efl.getAnIterationVariable()
+//select efl.getIterationDomain(), efl.getBasicBlock()
