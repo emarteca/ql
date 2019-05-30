@@ -30,11 +30,11 @@ private module EventEmitter {
   abstract class Range extends DataFlow::Node { }
 
   private class DefaultRange extends Range {
-    DefaultRange() {
-      exists(DataFlow::MethodCallNode mcn |
-        mcn.getCalleeName() = EventEmitter::on() and mcn.getReceiver() = this
-      )
-    }
+//    DefaultRange() {
+//      exists(DataFlow::MethodCallNode mcn |
+//        mcn.getCalleeName() = EventEmitter::on() and mcn.getReceiver() = this
+//      )
+//    }
   }
 }
 
