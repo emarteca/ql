@@ -94,3 +94,50 @@ class EmitNode extends DataFlow::MethodCallNode {
 class NaiveListenNode extends DataFlow::MethodCallNode {
   NaiveListenNode() { this.getCalleeName() = EventEmitter::on() }
 }
+
+// ------------------------------------------------------------------------------------------------------------ 
+
+// start of query section
+
+// basic query for finding dead listeners
+// note: this does not take into account the actual event flow
+
+ListenNode getADeadListener() {
+	not exists( EmitNode e | e.getAListener() = result)
+}
+
+// class to respresent a listenNode using one of the built-in events in SocketIO and not some 
+// user-defined events
+// we can use this to analyze the structure of the built-in calls
+// list is from the following link: https://github.com/socketio/socket.io/blob/master/docs/emit.md
+class SocketIOReservedListenNode extends ListenNode {
+  SocketIOReservedListenNode() {
+    exists(string s |
+      s = this.getEventName() and
+      (
+        s = "error" or
+        s = "connect" or
+        s = "connecting" or
+        s = "disconnect" or
+        s = "disconnecting" or
+        s = "newListener" or
+        s = "removeListener" or
+        s = "ping" or
+        s = "pong"
+      )
+    )
+  }
+}
+
+string getListOfParams_FunctionNode( DataFlow::FunctionNode fn) {
+	(fn.getNumParameter() > 0 and result = concat( DataFlow::ParameterNode p | p = fn.getAParameter() | p.toString(), ", ")) or
+	(fn.getNumParameter() = 0 and result = "{noargs}")
+}
+
+string queryResult() {
+	result = concat( SocketIOReservedListenNode ln, DataFlow::FunctionNode fn |
+ ln.asExpr().getFile().toString().regexpMatch(".*socket.io.js.*")
+and fn = ln.getListener() |
+ ln + " ! " + ln.getCalleeName() + " ! " + ln.getBase() + " ! " +  ln.getEventName()+ " ! " +  ln.getReceiver()+ " ! " + 
+ fn + " ! " +  fn.getNumParameter() + " ! " +  getListOfParams_FunctionNode(fn), "\n")
+}
