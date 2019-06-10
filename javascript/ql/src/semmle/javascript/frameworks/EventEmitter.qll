@@ -118,12 +118,14 @@ class SocketIOReservedListenNode extends ListenNode {
         s = "error" or
         s = "connect" or
         s = "connecting" or
+        s = "connection" or
         s = "disconnect" or
         s = "disconnecting" or
         s = "newListener" or
         s = "removeListener" or
         s = "ping" or
-        s = "pong"
+        s = "pong" or
+        s = "join"
       )
     )
   }
@@ -134,10 +136,10 @@ string getListOfParams_FunctionNode( DataFlow::FunctionNode fn) {
 	(fn.getNumParameter() = 0 and result = "{noargs}")
 }
 
-string queryResult() {
-	result = concat( SocketIOReservedListenNode ln, DataFlow::FunctionNode fn |
- ln.asExpr().getFile().toString().regexpMatch(".*socket.io.js.*")
-and fn = ln.getListener() |
- ln + " ! " + ln.getCalleeName() + " ! " + ln.getBase() + " ! " +  ln.getEventName()+ " ! " +  ln.getReceiver()+ " ! " + 
- fn + " ! " +  fn.getNumParameter() + " ! " +  getListOfParams_FunctionNode(fn), "\n")
-}
+//string queryResult() {
+//	result = concat( SocketIOReservedListenNode ln, DataFlow::FunctionNode fn |
+// ln.asExpr().getFile().toString().regexpMatch(".*socket.io.js.*")
+//and fn = ln.getListener() |
+// ln + " ! " + ln.getCalleeName() + " ! " + ln.getBase() + " ! " +  ln.getEventName()+ " ! " +  ln.getReceiver()+ " ! " + 
+// fn + " ! " +  fn.getNumParameter() + " ! " +  getListOfParams_FunctionNode(fn), "\n")
+//}
