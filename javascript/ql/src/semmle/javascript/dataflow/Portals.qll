@@ -123,7 +123,7 @@ class Portal extends TPortal {
  * Assignments to `module.exports` are entries to this portal, while
  * imports are exits.
  */
-private class NpmPackagePortal extends Portal, MkNpmPackagePortal {
+class NpmPackagePortal extends Portal, MkNpmPackagePortal {
   string pkgName;
 
   NpmPackagePortal() { this = MkNpmPackagePortal(pkgName) }
@@ -131,15 +131,34 @@ private class NpmPackagePortal extends Portal, MkNpmPackagePortal {
   /** Gets the name of the npm package. */
   string getName() { result = pkgName }
 
-  override DataFlow::SourceNode getAnExitNode(boolean isRemote) {
+  private DataFlow::SourceNode getAnExitNode(boolean isRemote, DataFlow::TypeTracker t) {
+    t.start() and
     NpmPackagePortal::imports(result, pkgName) and
     isRemote = false
+    or
+    exists(DataFlow::TypeTracker t2 | result = getAnExitNode(isRemote, t2).track(t2, t))
+  }
+
+  override DataFlow::SourceNode getAnExitNode(boolean isRemote) {
+    result = getAnExitNode(isRemote, DataFlow::TypeTracker::end())
+  }
+  
+  private DataFlow::SourceNode getAnEntryNode(boolean escapes, DataFlow::TypeTracker t) {
+    t.start() and
+    NpmPackagePortal::exports(pkgName, result) and
+    escapes = true
+    or
+    exists(DataFlow::TypeTracker t2 | result = getAnEntryNode(escapes, t2).track(t2, t))
   }
 
   override DataFlow::Node getAnEntryNode(boolean escapes) {
-    NpmPackagePortal::exports(pkgName, result) and
-    escapes = true
+    result = getAnEntryNode(escapes, DataFlow::TypeTracker::end())
   }
+
+//  override DataFlow::Node getAnEntryNode(boolean escapes) {
+//    NpmPackagePortal::exports(pkgName, result) and
+//    escapes = true
+//  }
 
   override string toString() { result = "(root https://www.npmjs.com/package/" + pkgName + ")" }
 
@@ -167,8 +186,16 @@ private module NpmPackagePortal {
   predicate imports(DataFlow::SourceNode imp, string pkgName) {
     exists(NPMPackage pkg |
       imp = getAModuleImport(pkg, pkgName) and
-      pkg.declaresDependency(pkgName, _)
+      (
+        pkg.declaresDependency(pkgName, _)
+        or
+        exists(Module m | m.getName() = pkgName and m.isExterns())
+      )
     )
+    
+    or pkgName = "socket.io-client" and 
+    not exists(NPMPackage pkg, string pkgName2 | imp = getAModuleImport(pkg, pkgName2) and not pkgName = pkgName2 )
+    and exists( GlobalVariable gv | gv.getName() = "io" and imp = DataFlow::exprNode(gv.getAnAccess()))
   }
 
   /** Holds if `imp` imports `member` from package `pkgName`. */
@@ -245,9 +272,17 @@ private class MemberPortal extends CompoundPortal, MkMemberPortal {
 
   /** Gets the name of this member. */
   string getName() { result = prop }
+  
+  private DataFlow::SourceNode getAnExitNode(boolean isRemote, DataFlow::TypeTracker t) {
+  	t.start() and
+  	MemberPortal::reads(base, prop, result, isRemote)
+  	or
+  	exists( DataFlow::TypeTracker t2 | result = getAnExitNode(isRemote, t2).track(t, t2))
+  }
 
   override DataFlow::SourceNode getAnExitNode(boolean isRemote) {
-    MemberPortal::reads(base, prop, result, isRemote)
+    //MemberPortal::reads(base, prop, result, isRemote)
+    result = getAnExitNode(isRemote, DataFlow::TypeTracker::end())
   }
 
   override DataFlow::Node getAnEntryNode(boolean escapes) {
@@ -315,8 +350,16 @@ private module MemberPortal {
 private class InstancePortal extends CompoundPortal, MkInstancePortal {
   InstancePortal() { this = MkInstancePortal(base) }
 
+  private DataFlow::SourceNode getAnExitNode(boolean isRemote, DataFlow::TypeTracker t) {
+  	t.start() and 
+  	InstancePortal::instanceUse(base, result, isRemote) 
+  	or
+  	exists(DataFlow::TypeTracker t2 | result = getAnExitNode(isRemote, t2).track(t2, t))
+  }
+  
   override DataFlow::SourceNode getAnExitNode(boolean isRemote) {
-    InstancePortal::instanceUse(base, result, isRemote)
+    //InstancePortal::instanceUse(base, result, isRemote)
+    result = getAnExitNode(isRemote, DataFlow::TypeTracker::end())
   }
 
   override DataFlow::Node getAnEntryNode(boolean escapes) {
@@ -400,9 +443,17 @@ class ParameterPortal extends CompoundPortal, MkParameterPortal {
 
   /** Gets the index of the parameterb represented by this portal. */
   int getIndex() { result = i }
+  
+  private DataFlow::SourceNode getAnExitNode( boolean isRemote, DataFlow::TypeTracker t) {
+  	t.start() and 
+  	ParameterPortal::parameter(base, i, result, isRemote) 
+  	or
+  	exists(DataFlow::TypeTracker t2 | result = getAnExitNode(isRemote, t2).track(t2, t))
+  }
 
   override DataFlow::SourceNode getAnExitNode(boolean isRemote) {
-    ParameterPortal::parameter(base, i, result, isRemote)
+    //ParameterPortal::parameter(base, i, result, isRemote)
+    result = getAnExitNode(isRemote, DataFlow::TypeTracker::end())
   }
 
   override DataFlow::Node getAnEntryNode(boolean escapes) {
@@ -434,9 +485,17 @@ private module ParameterPortal {
  */
 class ReturnPortal extends CompoundPortal, MkReturnPortal {
   ReturnPortal() { this = MkReturnPortal(base) }
+  
+  private DataFlow::SourceNode getAnExitNode( boolean isRemote, DataFlow::TypeTracker t) {
+  	t.start() and 
+  	ReturnPortal::calls(result, base, isRemote)
+  	or
+  	exists(DataFlow::TypeTracker t2 | result = getAnExitNode(isRemote, t2).track(t2, t))
+  }
 
   override DataFlow::SourceNode getAnExitNode(boolean isRemote) {
-    ReturnPortal::calls(result, base, isRemote)
+    //ReturnPortal::calls(result, base, isRemote)
+    result = getAnExitNode(isRemote, DataFlow::TypeTracker::end())
   }
 
   override DataFlow::Node getAnEntryNode(boolean escapes) {

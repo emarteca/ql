@@ -64,6 +64,17 @@ class ListenNode extends DataFlow::MethodCallNode {
   DataFlow::FunctionNode getListener() { result = getCallback(1) }
 }
 
+class PromiseThenNode extends DataFlow::MethodCallNode {
+  BaseNode base;
+
+  PromiseThenNode() { this = base.getAMethodCall("then") }
+
+  BaseNode getBase() { result = base }
+
+  // get the callback that handles data received from a client
+  DataFlow::FunctionNode getCallback() { result = getCallback(0) }
+}
+
 // based on the SendNode from SocketIO
 class EmitNode extends DataFlow::MethodCallNode {
   BaseNode base;
