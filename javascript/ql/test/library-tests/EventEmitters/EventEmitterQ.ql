@@ -11,7 +11,7 @@ import semmle.javascript.dataflow.Portals
 //}
 string queryResult() {
   result = concat(Portal p, ListenNode ln, DataFlow::FunctionNode fn, DataFlow::Node pen |
-      ln.asExpr().getFile().toString().regexpMatch(".*fs.*") and
+      //ln.asExpr().getFile().toString().regexpMatch(".*fs.*") and
       fn = ln.getListener() and
       ln.getBase*() = pen and
       pen = p.getAnExitNode(_)
@@ -24,7 +24,7 @@ string queryResult() {
 
 //
 //from TopLevel t1
-//select queryResult()
+select queryResult()
 //from Portal p, ListenNode ln, DataFlow::FunctionNode fn, DataFlow::Node pen
 //where
 //  ln.asExpr().getFile().toString().regexpMatch(".*fs.*") and
@@ -133,12 +133,16 @@ class TSGlobalDeclImport extends DataFlow::ModuleImportNode::Range {
 //where s = aggregateListOfCorrectAPIUses(ln) and not s = ""
 //select ln.getEventName(), ln.asExpr().getLocation(), ln, s
 
-from ListenNode ln, string s
-where s = aggregateListOfUnknownAPIUses(ln) and not s = ""
-select ln.getEventName(), ln.asExpr().getLocation(), ln, s
+//from ListenNode ln, string s
+//where s = aggregateListOfUnknownAPIUses(ln) and not s = ""
+//select ln.getEventName(), ln.asExpr().getLocation(), ln, s
 
 
-
+//from Portal p
+//where p.getAnExitNode(_).asExpr().getFile().toString().regexpMatch(".*SE1034.*")
+//from Variable p
+//where p.getName() = "io" and p.getADeclaration().getFile().toString().regexpMatch(".*SE1034.*")
+//select p, p.getADeclaration()
 
 //from LocalVarTypeAccess q, string s, Variable v
 //where
