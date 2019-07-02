@@ -24,7 +24,7 @@ string queryResult() {
 
 //
 //from TopLevel t1
-select queryResult()
+//select queryResult()
 //from Portal p, ListenNode ln, DataFlow::FunctionNode fn, DataFlow::Node pen
 //where
 //  ln.asExpr().getFile().toString().regexpMatch(".*fs.*") and
@@ -154,3 +154,6 @@ class TSGlobalDeclImport extends DataFlow::ModuleImportNode::Range {
 //  q.getEnclosingStmt().(VarDeclStmt).getADecl().getBindingPattern().getAVariable() = v
 //select q, s, v.getAReference()
 
+
+from Portal p
+select p, p.getAnExitNode(_)

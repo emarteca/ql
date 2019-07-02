@@ -188,14 +188,14 @@ private module NpmPackagePortal {
       imp = getAModuleImport(pkg, pkgName) and
       (
         pkg.declaresDependency(pkgName, _)
-        or
-        exists(Module m | m.getName() = pkgName and m.isExterns())
+//        or
+//        exists(Module m | m.getName() = pkgName and m.isExterns())
       )
     )
     
-    or pkgName = "socket.io-client" and 
-    not exists(NPMPackage pkg, string pkgName2 | imp = getAModuleImport(pkg, pkgName2) and not pkgName = pkgName2 )
-    and exists( GlobalVariable gv | gv.getName() = "io" and imp = DataFlow::exprNode(gv.getAnAccess()))
+//    or pkgName = "socket.io-client" and 
+//    not exists(NPMPackage pkg, string pkgName2 | imp = getAModuleImport(pkg, pkgName2) and not pkgName = pkgName2 )
+//    and exists( GlobalVariable gv | gv.getName() = "io" and imp = DataFlow::exprNode(gv.getAnAccess()))
   }
 
   /** Holds if `imp` imports `member` from package `pkgName`. */
