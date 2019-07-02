@@ -17,14 +17,14 @@ string queryResult() {
       pen = p.getAnExitNode(_)
     |
       p + " ! " + pen + " ! " + ln + " ! " + ln.getCalleeName() + " ! " + ln.getBase() + " ! " +
-          ln.getEventName() + " ! " + ln.getReceiver() + " ! " + fn + " ! " + fn.getNumParameter() +
-          " ! " + getListOfParams_FunctionNode(fn), "\n"
+          ln.getEventName(), "\n" //+ " ! " + ln.getReceiver() + " ! " + fn + " ! " + fn.getNumParameter() +
+          //" ! " + getListOfParams_FunctionNode(fn), "\n"
     )
 }
 
 //
 //from TopLevel t1
-//select queryResult()
+select queryResult()
 //from Portal p, ListenNode ln, DataFlow::FunctionNode fn, DataFlow::Node pen
 //where
 //  ln.asExpr().getFile().toString().regexpMatch(".*fs.*") and
@@ -153,7 +153,3 @@ class TSGlobalDeclImport extends DataFlow::ModuleImportNode::Range {
 //  ) and
 //  q.getEnclosingStmt().(VarDeclStmt).getADecl().getBindingPattern().getAVariable() = v
 //select q, s, v.getAReference()
-
-
-from Portal p
-select p, p.getAnExitNode(_)
