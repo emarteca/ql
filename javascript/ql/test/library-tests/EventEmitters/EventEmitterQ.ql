@@ -24,7 +24,7 @@ string queryResult() {
 
 //
 //from TopLevel t1
-select queryResult()
+//select queryResult()
 //from Portal p, ListenNode ln, DataFlow::FunctionNode fn, DataFlow::Node pen
 //where
 //  ln.asExpr().getFile().toString().regexpMatch(".*fs.*") and
@@ -125,9 +125,9 @@ class TSGlobalDeclImport extends DataFlow::ModuleImportNode::Range {
   override string getPath() { result = path }
 }
 
-//from ListenNode ln, string s
-//where s = aggregateListOfBrokenAPIUses(ln) and not s = ""
-//select ln.getEventName(), ln.asExpr().getLocation(), ln, s
+from ListenNode ln, string s
+where s = aggregateListOfBrokenAPIUses(ln) and not s = ""
+select ln.getEventName(), ln.asExpr().getLocation(), ln, s
 
 //from ListenNode ln, string s
 //where s = aggregateListOfCorrectAPIUses(ln) and not s = ""
@@ -136,6 +136,10 @@ class TSGlobalDeclImport extends DataFlow::ModuleImportNode::Range {
 //from ListenNode ln, string s
 //where s = aggregateListOfUnknownAPIUses(ln) and not s = ""
 //select ln.getEventName(), ln.asExpr().getLocation(), ln, s
+
+//from ListenNode ln
+//where weHaveAProblem(ln)
+//select ln
 
 
 //from Portal p
