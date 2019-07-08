@@ -27,35 +27,35 @@ private module EventEmitter {
     result = "prependOnceListener"
   }
 
-  abstract class Range extends DataFlow::Node { }
-
-  private class DefaultRange extends Range {
-//    DefaultRange() {
-//      exists(DataFlow::MethodCallNode mcn |
-//        mcn.getCalleeName() = EventEmitter::on() and mcn.getReceiver() = this
-//      )
-//    }
-  }
+//  abstract class Range extends DataFlow::Node { }
+//
+//  private class DefaultRange extends Range {
+////    DefaultRange() {
+////      exists(DataFlow::MethodCallNode mcn |
+////        mcn.getCalleeName() = EventEmitter::on() and mcn.getReceiver() = this
+////      )
+////    }
+//  }
 }
 
-class EventEmitter extends DataFlow::SourceNode {
-  EventEmitter::Range self;
-
-  EventEmitter() { this = self }
-}
-
-// based on the SocketNode from the SocketIO library
-class BaseNode extends DataFlow::SourceNode, EventEmitter { }
+//class EventEmitter extends DataFlow::SourceNode {
+//  EventEmitter::Range self;
+//
+//  EventEmitter() { this = self }
+//}
+//
+//// based on the SocketNode from the SocketIO library
+//class BaseNode extends DataFlow::SourceNode, EventEmitter { }
 
 // based on the ReceiveNode from the SocketIO library
 // note: took out the predicates for getting the arguments other than the event and the listener
 // but they're in the SocketIO lib if needed in the general case later
 class ListenNode extends DataFlow::MethodCallNode {
-  BaseNode base;
+  DataFlow::SourceNode base;
 
   ListenNode() { this = base.getAMethodCall(EventEmitter::on()) }
 
-  BaseNode getBase() { result = base }
+  DataFlow::SourceNode getBase() { result = base }
 
   // get the event name associated with the data, if it can be determined
   string getEventName() { getArgument(0).mayHaveStringValue(result) }
@@ -65,11 +65,11 @@ class ListenNode extends DataFlow::MethodCallNode {
 }
 
 class PromiseThenNode extends DataFlow::MethodCallNode {
-  BaseNode base;
+  DataFlow::SourceNode base;
 
   PromiseThenNode() { this = base.getAMethodCall("then") }
 
-  BaseNode getBase() { result = base }
+  DataFlow::SourceNode getBase() { result = base }
 
   // get the callback that handles data received from a client
   DataFlow::FunctionNode getCallback() { result = getCallback(0) }
@@ -77,7 +77,7 @@ class PromiseThenNode extends DataFlow::MethodCallNode {
 
 // based on the SendNode from SocketIO
 class EmitNode extends DataFlow::MethodCallNode {
-  BaseNode base;
+  DataFlow::SourceNode base;
 
   int firstDataIndex;
 
@@ -89,7 +89,7 @@ class EmitNode extends DataFlow::MethodCallNode {
     )
   }
 
-  BaseNode getBase() { result = base }
+  DataFlow::SourceNode getBase() { result = base }
 
   // get the event name associated with the data, if it can be determined
   string getEventName() {
