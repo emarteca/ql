@@ -1,4 +1,5 @@
 import pandas as pd 
+import numpy as np
 
 # given the name of a portal, split the string up to find the name of the root
 def getPortalRoot( portal):
