@@ -1,0 +1,18 @@
+(return (member createReadStream (root https://www.npmjs.com/package/fs))),end
+(return (member createReadStream (root https://www.npmjs.com/package/fs))),open
+(return (member createReadStream (root https://www.npmjs.com/package/fs))),data
+(return (member createWriteTypo (root https://www.npmjs.com/package/fs))),close
+(return (member createWriteStream (root https://www.npmjs.com/package/fs))),drain
+(return (member createWriteStream (root https://www.npmjs.com/package/fs))),finish
+(return (member createWriteStream (root https://www.npmjs.com/package/fs))),open
+(return (member createWriteStream (root https://www.npmjs.com/package/fs))),drain
+(return (member createWriteStream (root https://www.npmjs.com/package/fs))),close
+(return (member on (return (member createReadStream (root https://www.npmjs.com/package/fs))))),end
+(return (member on (return (member createReadStream (root https://www.npmjs.com/package/fs))))),newUserEvent
+(return (member on (return (member createReadStream (root https://www.npmjs.com/package/fs))))),data
+(return (member on (return (member createWriteStream (root https://www.npmjs.com/package/fs))))),close
+(return (member on (return (member createWriteStream (root https://www.npmjs.com/package/fs))))),drain
+(return (member on (return (member createWriteStream (root https://www.npmjs.com/package/fs))))),finish
+(return (member on (return (member createWriteStream (root https://www.npmjs.com/package/fs))))),open
+(return (member on (return (member createWriteStream (root https://www.npmjs.com/package/fs))))),drain
+(return (member on (return (member createWriteStream (root https://www.npmjs.com/package/fs))))),close
