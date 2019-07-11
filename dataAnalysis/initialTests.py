@@ -29,6 +29,14 @@ def getKnownCorrectPairs( data):
 	threshold = 1
 	return data[data['freq'] > threshold]
 
+def getKnownIncorrectForPortal( portal_name, cvs):
+	# the incorrect list for a portal is
+	# total list for the same root - list of correct vals for the portal
+	return np.setdiff1d(cvs.loc[cvs['proot'] == getPortalRoot(portal_name)].loc[:,'eventname'], cvs.loc[cvs['portal'] == portal_name].loc[:,'eventname'].values)
+
+def getKnownCorrectForPortal( portal_name, cvs):
+	return cvs.loc[cvs['portal'] == portal_name].loc[:,'eventname'].values
+
 # sample usecase 
 def main():
 	# first, read in the results we're going to base correctness on 
@@ -44,6 +52,8 @@ def main():
 	test_input = processFile('in_test.csv')
 	test_input = test_input.drop_duplicates()
 	test_input['Correctness'] = test_input.apply(lambda row: rowCorrectness(row, correct_vals), axis=1)
+	test_input['Known Incorrect'] = test_input.apply(lambda row: getKnownIncorrectForPortal(row['portal'], correct_vals), axis=1)
+	test_input['Known Correct'] = test_input.apply(lambda row: getKnownCorrectForPortal(row['portal'], correct_vals), axis=1)
 
 	print(test_input)
 
