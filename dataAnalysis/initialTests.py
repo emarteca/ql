@@ -1,5 +1,6 @@
 import pandas as pd 
 import numpy as np
+import matplotlib.pyplot as plt
 
 # given the name of a portal, split the string up to find the name of the root
 def getPortalRoot( portal):
@@ -38,6 +39,15 @@ def getKnownIncorrectForPortal( portal_name, cvs):
 def getKnownCorrectForPortal( portal_name, cvs):
 	return cvs.loc[cvs['portal'] == portal_name].loc[:,'eventname'].values
 
+def plotHistProotEname( proot, eventname, df):
+	plotme = df.loc[(df['proot'] == proot) & (df['eventname'] == eventname)][['portal','freq']]
+	graph = plotme.plot(kind='bar',x='portal',y='freq')
+	plt.xlabel('Portal')
+	plt.ylabel('Frequency')
+	plt.title('Frequency of listeners to "' + eventname + '" on root ' + proot, fontsize=10)
+	plt.legend().remove()
+	plt.show()
+
 # sample usecase 
 def main():
 	# first, read in the results we're going to base correctness on 
@@ -58,69 +68,7 @@ def main():
 
 	print(test_input)
 
+	plotHistProotEname( 'https://www.npmjs.com/package/socket.io', 'connection', dat)
+
 main()
 
-
-
-
-
-
-
-# old bad code, list comprehension style
-
-
-
-# portals = dat.loc[:, 'portal']
-# eventnames = dat.loc[:, 'eventname']
-# eventnames.unique()
-
-# roots = portals.map( getPortalRoot)
-# dat['proot'] = roots # add a root column
-
-
-
-# # for each root, get a list of portals
-# # can be accessed per index 
-# [(i, dat.loc[dat['proot'] == i].loc[:, 'portal'].unique()) for i in roots.unique()]
-
-# # for each root, get a list of eventnames
-# [(i, dat.loc[dat['proot'] == i].loc[:, 'eventname'].unique()) for i in roots.unique()]
-
-# # for each portal, get a list of eventnames
-# # this is SUPER useless
-# [(i, dat.loc[dat['portal'] == i].loc[:, 'eventname'].unique()) for i in portals.unique()]
-
-
-
-# # for each (root, eventname) pair, count the number of different 
-# # portals it appears in
-# list(filter( lambda z: z[2] > 0, [(i, j, len(dat.loc[dat['proot'] == i].loc[dat['eventname'] == j].loc[:, 'portal'].unique())) for i in roots.unique() for j in eventnames.unique()]))
-
-# # foreach (portal, eventname) pair, count the number of each (none > 2 right now)
-# # this is SUPER slow, would need to be faster to actually be used
-# list(filter( lambda z: z[2] > 1, [(i, j, len(dat.loc[dat['portal'] == i].loc[dat['eventname'] == j].loc[:, 'proot'].unique())) for i in portals.unique() for j in eventnames.unique()]))
-
-
-# [(i, j, len(dat.loc[dat['portal'] == i].loc[dat['eventname'] == j].loc[:, 'proot'].unique())) for i in portals.unique() for j in df_root_ename.loc[df_root_ename['a'] == getPortalRoot(i)]['b'].tolist()[0]]
-
-# # better way of doing the original run
-# # i realize now that the reason nothing is showing up as appearing multiple times is that i filtered the list to be unique before pasting it into the file 
-# list(filter( lambda z: z[2] > 1, [(i, j, len(dat.loc[dat['portal'] == i].loc[dat['eventname'] == j].loc[:, 'proot'].unique())) for i in portals.unique() for j in df_root_ename.loc[df_root_ename['a'] == getPortalRoot(i)]['b'].tolist()[0]]))
-
-
-
-
-# ardat = [[i, dat.loc[dat['proot'] == i].loc[:, 'eventname'].unique()] for i in roots.unique()]
-# from pandas import DataFrame
-# df_root_ename = DataFrame.from_records(ardat)
-
-
-# threshold = 0 # number of appearaces above which we "know" the (portal, eventname) is correct 
-# correctVals = DataFrame.from_records(list(filter( lambda z: z[2] > threshold, [(i, j, len(dat.loc[dat['portal'] == i].loc[dat['eventname'] == j].loc[:, 'proot'].unique())) for i in portals.unique() for j in df_root_ename.loc[df_root_ename['a'] == getPortalRoot(i)]['b'].tolist()[0]])))
-# correctVals.columns = ['portal', 'ename', 'freq']
-# correct_portal_enames = correctVals.drop('freq', axis=1)
-
-
-# at this point, let's read in another list and check for existence
-# checking for correctness is easy
-# for incorrectness, let's say does not exist, but does exist in (root, ename) dataframe (df_root_ename)
