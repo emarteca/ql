@@ -124,10 +124,10 @@ class TSGlobalDeclImport extends DataFlow::ModuleImportNode::Range {
 
   override string getPath() { result = path }
 }
-
-from ListenNode ln, string s
-where s = aggregateListOfBrokenAPIUses(ln) and not s = ""
-select ln.getEventName(), ln.asExpr().getLocation(), ln, s
+//
+//from ListenNode ln, string s
+//where s = aggregateListOfBrokenAPIUses(ln) and not s = ""
+//select ln.getEventName(), ln.asExpr().getLocation(), ln, s
 
 //from ListenNode ln, string s
 //where s = aggregateListOfCorrectAPIUses(ln) and not s = ""
@@ -139,11 +139,15 @@ select ln.getEventName(), ln.asExpr().getLocation(), ln, s
 
 //from ListenNode ln
 //where weHaveAProblem(ln)
-//select ln
+//select ln, ln.asExpr().getFile()
 
+from ListenNode ln
+where ln.asExpr().getFile().toString().regexpMatch(".*SE8424.*")
+select ln, ln.asExpr().getLocation(), aggregateListOfBrokenAPIUses(ln), aggregateListOfCorrectAPIUses(ln), aggregateListOfUnknownAPIUses(ln)
 
 //from Portal p
-//where p.getAnExitNode(_).asExpr().getFile().toString().regexpMatch(".*SE1034.*")
+//where p.getAnExitNode(_).asExpr().getFile().toString().regexpMatch(".*SE3211.*")
+//select p, p.getAnExitNode(_)
 //from Variable p
 //where p.getName() = "io" and p.getADeclaration().getFile().toString().regexpMatch(".*SE1034.*")
 //select p, p.getADeclaration()
