@@ -10,8 +10,8 @@ def getPortalRoot( portal):
 # named columns, and including the portal root as a column
 def processFile( fileName):
 	result = pd.read_csv(fileName, sep = ',', header=None)
-	result.columns = ['portal', 'eventname']
-	result['proot'] = result.apply(lambda row: getPortalRoot(row['portal']), axis=1)
+	result.columns = ['proot', 'portal', 'eventname']
+	# result['proot'] = result.apply(lambda row: getPortalRoot(row['portal']), axis=1)
 	return result
 
 # takes in a row and determines if it's correct from the database of known results
@@ -39,14 +39,33 @@ def getKnownIncorrectForPortal( portal_name, cvs):
 def getKnownCorrectForPortal( portal_name, cvs):
 	return cvs.loc[cvs['portal'] == portal_name].loc[:,'eventname'].values
 
-def plotHistProotEname( proot, eventname, df):
-	plotme = df.loc[(df['proot'] == proot) & (df['eventname'] == eventname)][['portal','freq']]
+def plotHistProotEname( proot, eventname, df, topToPlot = -1, logscale = False):
+	plotme = df.loc[(df['proot'] == proot) & (df['eventname'] == eventname)][['portal','freq']].sort_values(['freq'])
+	if topToPlot > -1:
+		plotme = plotme.tail(topToPlot)
 	graph = plotme.plot(kind='bar',x='portal',y='freq')
 	plt.xlabel('Portal')
 	plt.ylabel('Frequency')
+	if logscale:
+		plt.yscale('log')
 	plt.title('Frequency of listeners to "' + eventname + '" on root ' + proot, fontsize=10)
+	plt.gca().axes.xaxis.set_ticklabels(list(range(len(plotme))))
 	plt.legend().remove()
+	# make a custom "legend" (i.e. textbox) of the portals actually on this graph
+	portals = list( plotme['portal'].values)
+	plt.text(0, plt.ylim()[1]*3./4, getLegendList(portals), fontsize=6)
 	plt.show()
+
+def getLegendList( pList):
+	ret = ""
+	for i in range(len(pList)):
+		ret += str(i) + ": " + pList[i] + "\n"
+	return ret
+
+def printDFToFile( df, filename):
+	f = open(filename, 'w');
+	f.write(df.to_csv(index = False))
+	f.close()
 
 # sample usecase 
 def main():
@@ -68,7 +87,7 @@ def main():
 
 	print(test_input)
 
-	plotHistProotEname( 'https://www.npmjs.com/package/socket.io', 'connection', dat)
+	plotHistProotEname( 'fs', 'data', dat, 10)
 
 main()
 
