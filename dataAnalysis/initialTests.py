@@ -39,7 +39,7 @@ def getKnownIncorrectForPortal( portal_name, cvs):
 def getKnownCorrectForPortal( portal_name, cvs):
 	return cvs.loc[cvs['portal'] == portal_name].loc[:,'eventname'].values
 
-def plotHistProotEname( proot, eventname, df, topToPlot = -1, logscale = False):
+def plotHistProotEname( proot, eventname, df, topToPlot = -1, logscale = False, showTickLabels = True):
 	plotme = df.loc[(df['proot'] == proot) & (df['eventname'] == eventname)][['portal','freq']].sort_values(['freq'])
 	if topToPlot > -1:
 		plotme = plotme.tail(topToPlot)
@@ -49,11 +49,15 @@ def plotHistProotEname( proot, eventname, df, topToPlot = -1, logscale = False):
 	if logscale:
 		plt.yscale('log')
 	plt.title('Frequency of listeners to "' + eventname + '" on root ' + proot, fontsize=10)
-	plt.gca().axes.xaxis.set_ticklabels(list(range(len(plotme))))
 	plt.legend().remove()
-	# make a custom "legend" (i.e. textbox) of the portals actually on this graph
-	portals = list( plotme['portal'].values)
-	plt.text(0, plt.ylim()[1]*3./4, getLegendList(portals), fontsize=6)
+	# 
+	if showTickLabels:
+		plt.gca().axes.xaxis.set_ticklabels(list(range(len(plotme))))
+		# make a custom "legend" (i.e. textbox) of the portals actually on this graph
+		portals = list( plotme['portal'].values)
+		plt.text(0, plt.ylim()[1]*1./4, getLegendList(portals), fontsize=6)
+	else:
+		plt.gca().axes.xaxis.set_ticklabels([])
 	plt.show()
 
 def plotHistPortalEnames( portal, df):
