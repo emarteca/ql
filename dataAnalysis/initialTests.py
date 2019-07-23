@@ -56,6 +56,15 @@ def plotHistProotEname( proot, eventname, df, topToPlot = -1, logscale = False):
 	plt.text(0, plt.ylim()[1]*3./4, getLegendList(portals), fontsize=6)
 	plt.show()
 
+def plotHistPortalEnames( portal, df):
+	plotme = df.loc[df['portal'] == portal][['eventname', 'freq']].sort_values(['freq'])
+	graph = plotme.plot(kind='bar',x='eventname',y='freq')
+	plt.xlabel('Event name')
+	plt.ylabel('Frequency')
+	plt.title('Frequency of each listener on portal ' + portal, fontsize=10)
+	plt.legend().remove()
+	plt.show()
+
 def getLegendList( pList):
 	ret = ""
 	for i in range(len(pList)):
