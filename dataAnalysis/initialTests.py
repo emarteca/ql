@@ -96,15 +96,18 @@ def getProbBuggyPortalEnamePairs( df, proot, prare, pconf):
 	# B(number of ename AND portal, number of events, prare) < pconfidence (commonly used as 5%)
 	# where B is the cumulative binomial distribution fct
 
-	prdat = df[df['proot'] == proot][['portal', 'eventname', 'freq']]
+	prdat = df[df['proot'] == proot][['portal', 'eventname', 'freq', 'freq_e', 'freq_p']]
+	prdat['broken'] = prdat.apply(lambda row: isAPortalEnamePairBroken(prdat[(prdat['portal'] == row['portal']) & (prdat['eventname'] == row['eventname'])], prare, pconf, row['eventname'], row['portal']), axis=1)
+	return prdat[prdat['broken']]
 
-def isAPortalEnamePairRare( df, prare, pconf, ename, portal):
-	freq_eandp = df[(df['portal'] == portal) & (df['eventname'] == ename)][['freq']].values.sum()
-	freq_e = df[df['eventname'] == ename][['freq']].values.sum()
-	freq_p = df[df['portal'] == portal][['freq']].values.sum()
+def isAPortalEnamePairBroken( temp, prare, pconf, ename, portal):
+	# temp = df[(df['portal'] == portal) & (df['eventname'] == ename)]
+	freq_eandp = temp[['freq']].values[0][0]
+	freq_e = temp[['freq_e']].values[0][0]
+	freq_p = temp[['freq_p']].values[0][0]
 	# compute the binomial cdfs with the relevant parameters
-	# return ((binom.cdf( freq_eandp, freq_p, prare) < pconf) and (binom.cdf( freq_eandp, freq_e, prare) < pconf))
-	return [binom.cdf( freq_eandp, freq_p, prare), binom.cdf( freq_eandp, freq_e, prare)]
+	return ((binom.cdf( freq_eandp, freq_p, prare) < pconf) and (binom.cdf( freq_eandp, freq_e, prare) < pconf))
+	# return [binom.cdf( freq_eandp, freq_p, prare), binom.cdf( freq_eandp, freq_e, prare)]
 
 # sample usecase 
 def main():
@@ -112,6 +115,8 @@ def main():
 	dat = processFile('test.csv')
 	dat['freq'] = dat.groupby(['portal','eventname'])['proot'].transform('count') # add the frequency with which each row appears
 	dat = dat.drop_duplicates()
+	dat['freq_e'] = dat.groupby(['proot','eventname'])['freq'].transform('sum') # find frequency with which each event appears for the root
+	dat['freq_p'] = dat.groupby(['proot','portal'])['freq'].transform('sum') # find frequency with which each portal appears for the root
 
 	correct_vals = getKnownCorrectPairs(dat)
 
