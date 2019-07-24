@@ -1,6 +1,7 @@
 import pandas as pd 
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.stats import binom
 
 # given the name of a portal, split the string up to find the name of the root
 def getPortalRoot( portal):
@@ -80,6 +81,31 @@ def printDFToFile( df, filename):
 	f.write(df.to_csv(index = False))
 	f.close()
 
+
+# for a given root, find the potentially broken (portal, ename) pairs
+# given some specified thresholds for identifying these
+# right now these are placeholder thresholds, but hopefully most of this framework
+# is reusable when we figure out more accurate thresholds
+# for now keep prare for enames and portals the same, and pconf for enames and portals the same
+# but note that this may be subject to change
+def getProbBuggyPortalEnamePairs( df, proot, prare, pconf):
+	# from albert: 
+	# take prare = 5% (for example)
+	# B(number of ename AND portal, number of portal, prare) < pconfidence (could also be 5%)
+	# and
+	# B(number of ename AND portal, number of events, prare) < pconfidence (commonly used as 5%)
+	# where B is the cumulative binomial distribution fct
+
+	prdat = df[df['proot'] == proot][['portal', 'eventname', 'freq']]
+
+def isAPortalEnamePairRare( df, prare, pconf, ename, portal):
+	freq_eandp = df[(df['portal'] == portal) & (df['eventname'] == ename)][['freq']].values.sum()
+	freq_e = df[df['eventname'] == ename][['freq']].values.sum()
+	freq_p = df[df['portal'] == portal][['freq']].values.sum()
+	# compute the binomial cdfs with the relevant parameters
+	# return ((binom.cdf( freq_eandp, freq_p, prare) < pconf) and (binom.cdf( freq_eandp, freq_e, prare) < pconf))
+	return [binom.cdf( freq_eandp, freq_p, prare), binom.cdf( freq_eandp, freq_e, prare)]
+
 # sample usecase 
 def main():
 	# first, read in the results we're going to base correctness on 
@@ -103,4 +129,7 @@ def main():
 	plotHistProotEname( 'fs', 'data', dat, 10)
 
 main()
+
+
+
 
