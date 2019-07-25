@@ -13,7 +13,7 @@ def processFile( fileName):
 	result = pd.read_csv(fileName, sep = ',', header=None)
 	result.columns = ['proot', 'portal', 'eventname']
 	# result['proot'] = result.apply(lambda row: getPortalRoot(row['portal']), axis=1)
-	return result
+	return result.replace(np.nan, 'NaN', regex=True)
 
 # takes in a row and determines if it's correct from the database of known results
 # correct is if it's already present
@@ -88,25 +88,31 @@ def printDFToFile( df, filename):
 # is reusable when we figure out more accurate thresholds
 # for now keep prare for enames and portals the same, and pconf for enames and portals the same
 # but note that this may be subject to change
-def getProbBuggyPortalEnamePairs( df, proot, prare, pconf):
+def getProbBuggyPortalEnamePairs( df, proot, prare_e, prare_p, pconf):
 	# from albert: 
 	# take prare = 5% (for example)
 	# B(number of ename AND portal, number of portal, prare) < pconfidence (could also be 5%)
 	# and
 	# B(number of ename AND portal, number of events, prare) < pconfidence (commonly used as 5%)
 	# where B is the cumulative binomial distribution fct
-
 	prdat = df[df['proot'] == proot][['portal', 'eventname', 'freq', 'freq_e', 'freq_p']]
-	prdat['broken'] = prdat.apply(lambda row: isAPortalEnamePairBroken(prdat[(prdat['portal'] == row['portal']) & (prdat['eventname'] == row['eventname'])], prare, pconf, row['eventname'], row['portal']), axis=1)
+	prdat['broken'] = prdat.apply(lambda row: isAPortalEnamePairBroken(prdat[(prdat['portal'] == row['portal']) & (prdat['eventname'] == row['eventname'])], prare_e, prare_p, pconf, row['eventname'], row['portal']), axis=1)
 	return prdat[prdat['broken']]
 
-def isAPortalEnamePairBroken( temp, prare, pconf, ename, portal):
+# this is a temp function, should just be here for working on the terminal
+# don't use it in the above function getProbBuggyPortalEnamePairs as it would 
+# cause unnecessary temp variables of the whole dataframe 
+def addBrokenToFrame( prdat, prare_e, prare_p, pconf):
+	prdat['broken'] = prdat.apply(lambda row: isAPortalEnamePairBroken(prdat[(prdat['portal'] == row['portal']) & (prdat['eventname'] == row['eventname'])], prare_e, prare_p, pconf, row['eventname'], row['portal']), axis=1)
+	return prdat
+
+def isAPortalEnamePairBroken( temp, prare_e, prare_p, pconf, ename, portal):
 	# temp = df[(df['portal'] == portal) & (df['eventname'] == ename)]
 	freq_eandp = temp[['freq']].values[0][0]
 	freq_e = temp[['freq_e']].values[0][0]
 	freq_p = temp[['freq_p']].values[0][0]
 	# compute the binomial cdfs with the relevant parameters
-	return ((binom.cdf( freq_eandp, freq_p, prare) < pconf) and (binom.cdf( freq_eandp, freq_e, prare) < pconf))
+	return ((binom.cdf( freq_eandp, freq_p, prare_p) < pconf) and (binom.cdf( freq_eandp, freq_e, prare_e) < pconf))
 	# return [binom.cdf( freq_eandp, freq_p, prare), binom.cdf( freq_eandp, freq_e, prare)]
 
 # sample usecase 
