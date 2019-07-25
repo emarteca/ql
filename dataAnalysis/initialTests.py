@@ -99,6 +99,11 @@ def getProbBuggyPortalEnamePairs( df, proot, prare_e, prare_p, pconf):
 	prdat['broken'] = prdat.apply(lambda row: isAPortalEnamePairBroken(prdat[(prdat['portal'] == row['portal']) & (prdat['eventname'] == row['eventname'])], prare_e, prare_p, pconf, row['eventname'], row['portal']), axis=1)
 	return prdat[prdat['broken']]
 
+def getRootSpecificDFWithBroken( df, proot, prare_e, prare_p, pconf):
+	prdat = df[df['proot'] == proot][['portal', 'eventname', 'freq', 'freq_e', 'freq_p']]
+	prdat['broken'] = prdat.apply(lambda row: isAPortalEnamePairBroken(prdat[(prdat['portal'] == row['portal']) & (prdat['eventname'] == row['eventname'])], prare_e, prare_p, pconf, row['eventname'], row['portal']), axis=1)
+	return prdat
+
 # this is a temp function, should just be here for working on the terminal
 # don't use it in the above function getProbBuggyPortalEnamePairs as it would 
 # cause unnecessary temp variables of the whole dataframe 
