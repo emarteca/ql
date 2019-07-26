@@ -15,6 +15,9 @@ def processFile( fileName):
 	# result['proot'] = result.apply(lambda row: getPortalRoot(row['portal']), axis=1)
 	return result.replace(np.nan, 'NaN', regex=True)
 
+def getPathForPortalEname( df_with_path, portal, ename):
+	return df_with_path[(df_with_path['portal'] == portal) & (df_with_path['eventname'] == ename)]['path'] 
+
 # takes in a row and determines if it's correct from the database of known results
 # correct is if it's already present
 # incorrect is if it's not present but the (portal, eventname) combo is present
