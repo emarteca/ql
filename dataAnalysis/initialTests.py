@@ -123,6 +123,17 @@ def isAPortalEnamePairBroken( temp, prare_e, prare_p, pconf, ename, portal):
 	return ((binom.cdf( freq_eandp, freq_p, prare_p) < pconf) and (binom.cdf( freq_eandp, freq_e, prare_e) < pconf))
 	# return [binom.cdf( freq_eandp, freq_p, prare), binom.cdf( freq_eandp, freq_e, prare)]
 
+def addColumnForMatchingPortalEnames( df, df_to_comp, new_col_name):
+	# assume the df_to_comp has columns for 'portal' and 'eventname'
+	# and that these are the only columns we have to compare with
+	df[new_col_name] = df[['portal','eventname']].apply(tuple, 1).isin(df_to_comp.apply(tuple, 1))
+
+
+def processKnownPortalEnameFile( fileName):
+	result = pd.read_csv(fileName, sep = ',', header=None)
+	result.columns = ['portal', 'eventname']
+	return result
+
 # sample usecase 
 def main():
 	# first, read in the results we're going to base correctness on 
@@ -139,7 +150,7 @@ def main():
 	# add a column specifying the correctness of each row
 	test_input = processFile('in_test.csv')
 	test_input = test_input.drop_duplicates()
-	test_input['Correctness'] = test_input.apply(lambda row: rowCorrectness(row, correct_vals), axis=1)
+	test_input['Correctness'] = test_input.apply(lambda row: rowCorrectness(row, correct_vals), axis=1) # don't do it this way, for efficiency (but this is old code)
 	test_input['Known Incorrect'] = test_input.apply(lambda row: getKnownIncorrectForPortal(row['portal'], correct_vals), axis=1)
 	test_input['Known Correct'] = test_input.apply(lambda row: getKnownCorrectForPortal(row['portal'], correct_vals), axis=1)
 
