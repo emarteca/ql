@@ -11,7 +11,7 @@ def getPortalRoot( portal):
 # named columns, and including the portal root as a column
 def processFile( fileName):
 	result = pd.read_csv(fileName, sep = ',', header=None)
-	result.columns = ['proot', 'portal', 'eventname']
+	result.columns = ['proot', 'portal', 'eventname', 'projcount']
 	# result['proot'] = result.apply(lambda row: getPortalRoot(row['portal']), axis=1)
 	return result.replace(np.nan, 'NaN', regex=True)
 
@@ -138,7 +138,8 @@ def processKnownPortalEnameFile( fileName):
 def main():
 	# first, read in the results we're going to base correctness on 
 	dat = processFile('test.csv')
-	dat['freq'] = dat.groupby(['portal','eventname'])['proot'].transform('count') # add the frequency with which each row appears
+	dat['freq'] = dat.groupby(['portal','eventname', 'proot'])['projcount'].transform('sum') # add the frequency with which each row appears
+	dat = dat.drop(['projcount'], axis=1) # this information only makes sense to keep when we also have the project saved, i.e. in the "with files" version
 	dat = dat.drop_duplicates()
 	dat['freq_e'] = dat.groupby(['proot','eventname'])['freq'].transform('sum') # find frequency with which each event appears for the root
 	dat['freq_p'] = dat.groupby(['proot','portal'])['freq'].transform('sum') # find frequency with which each portal appears for the root
