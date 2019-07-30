@@ -117,10 +117,12 @@ def addBrokenToFrame( prdat, prare_e, prare_p, pconf):
 def isAPortalEnamePairBroken( temp, prare_e, prare_p, pconf, ename, portal):
 	# temp = df[(df['portal'] == portal) & (df['eventname'] == ename)]
 	freq_eandp = temp[['freq']].values[0][0]
+	freq_sumeandp = temp[['ltefreq_p']].values[0][0]
+	freq_eandsump = temp[['ltefreq_e']].values[0][0]
 	freq_e = temp[['freq_e']].values[0][0]
 	freq_p = temp[['freq_p']].values[0][0]
 	# compute the binomial cdfs with the relevant parameters
-	return ((binom.cdf( freq_eandp, freq_p, prare_p) < pconf) and (binom.cdf( freq_eandp, freq_e, prare_e) < pconf))
+	return ((binom.cdf( freq_sumeandp, freq_p, prare_p) < pconf) and (binom.cdf( freq_eandsump, freq_e, prare_e) < pconf))
 	# return [binom.cdf( freq_eandp, freq_p, prare), binom.cdf( freq_eandp, freq_e, prare)]
 
 def addColumnForMatchingPortalEnames( df, df_to_comp, new_col_name):
@@ -133,6 +135,19 @@ def processKnownPortalEnameFile( fileName):
 	result = pd.read_csv(fileName, sep = ',', header=None)
 	result.columns = ['portal', 'eventname']
 	return result
+
+# return the sum of frequencies of all rows where the value of 
+# a particular column is <= a specified value
+# will be used applied to each row in a dataframe to get the cumulative sum
+# for all portals and events 
+def conditionalFreqSumForLTEcol( df, val_to_comp):
+	return df[df['freq'] <= val_to_comp]['freq'].sum()
+
+def addLTEFreqsToFrame( prdat): 
+	prdat['ltefreq_p'] = prdat.apply(lambda row: conditionalFreqSumForLTEcol(prdat[prdat['eventname'] == row['eventname']], row['freq']), axis=1)
+	prdat['ltefreq_e'] = prdat.apply(lambda row: conditionalFreqSumForLTEcol(prdat[prdat['portal'] == row['portal']], row['freq']), axis=1)
+	return prdat
+
 
 # sample usecase 
 def main():
@@ -158,6 +173,7 @@ def main():
 	print(test_input)
 
 	plotHistProotEname( 'fs', 'data', dat, 10)
+
 
 main()
 
