@@ -2,17 +2,21 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import binom
+import re
 
 # given the name of a portal, split the string up to find the name of the root
 def getPortalRoot( portal):
 	return portal[ portal.index('root') + len('root ') : portal.index(')')]
+
+def getPortalDepthRoot( portal, depth): 
+	return portal[ [ m.start() for m in re.finditer('\(', portal)][-depth]: portal.find(')')]
 
 # given a csv of (portal, eventname) pairs, process it into a dataframe of the correct shape
 # named columns, and including the portal root as a column
 def processFile( fileName):
 	result = pd.read_csv(fileName, sep = ',', header=None)
 	result.columns = ['proot', 'portal', 'eventname', 'projcount']
-	# result['proot'] = result.apply(lambda row: getPortalRoot(row['portal']), axis=1)
+	result['proot_d2'] = result.apply(lambda row: getPortalDepthRoot(row['portal'], 2), axis=1)
 	return result.replace(np.nan, 'NaN', regex=True)
 
 def getPathForPortalEname( df_with_path, portal, ename):
@@ -144,8 +148,9 @@ def conditionalFreqSumForLTEcol( df, val_to_comp):
 	return df[df['freq'] <= val_to_comp]['freq'].sum()
 
 def addLTEFreqsToFrame( prdat): 
-	prdat['ltefreq_p'] = prdat.apply(lambda row: conditionalFreqSumForLTEcol(prdat[prdat['eventname'] == row['eventname']], row['freq']), axis=1)
-	prdat['ltefreq_e'] = prdat.apply(lambda row: conditionalFreqSumForLTEcol(prdat[prdat['portal'] == row['portal']], row['freq']), axis=1)
+	prdat['ltefreq_p'] = prdat.apply(lambda row: conditionalFreqSumForLTEcol(prdat[(prdat['eventname'] == row['eventname']) & 
+		(prdat['proot_d2'] == row['proot_d2'])], row['freq']), axis=1)
+	# prdat['ltefreq_e'] = prdat.apply(lambda row: conditionalFreqSumForLTEcol(prdat[prdat['portal'] == row['portal']], row['freq']), axis=1)
 	return prdat
 
 
@@ -178,5 +183,18 @@ def main():
 main()
 
 
+addLTEFreqsToFrame(fsdat)
+addLTEFreqsToFrame(netdat)
+addLTEFreqsToFrame(siodat)
+addLTEFreqsToFrame(siocdat)
+addLTEFreqsToFrame(httpdat)
 
+addBrokenToFrame(fsdat, prare_e, prare_p, pconf)
+addBrokenToFrame(netdat, prare_e, prare_p, pconf)
+addBrokenToFrame(siodat, prare_e, prare_p, pconf)
+addBrokenToFrame(siocdat, prare_e, prare_p, pconf)
+addBrokenToFrame(httpdat, prare_e, prare_p, pconf)
+
+printDFToFile(fsdat[fsdat['broken']].append(netdat[netdat['broken']]).append(siodat[siodat['broken']]).append(siocdat[siocdat['broken']]).append(httpdat[httpdat['broken']]), 
+	'fs_net_sio_sioc_http_pe0.065_pp0.05_pc_0.04_diagnosis.csv')
 
