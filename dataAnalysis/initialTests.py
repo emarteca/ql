@@ -8,8 +8,11 @@ import re
 def getPortalRoot( portal):
 	return portal[ portal.index('root') + len('root ') : portal.index(')')]
 
-def getPortalDepthRoot( portal, depth): 
-	return portal[ [ m.start() for m in re.finditer('\(', portal)][-depth]: portal.find(')')]
+def getPortalDepthRoot( portal, depth):
+    try:
+        return portal[ [ m.start() for m in re.finditer('\(', portal)][-depth]: portal.find(')')]
+    except IndexError:
+        return portal
 
 # given a csv of (portal, eventname) pairs, process it into a dataframe of the correct shape
 # named columns, and including the portal root as a column
@@ -150,7 +153,7 @@ def conditionalFreqSumForLTEcol( df, val_to_comp):
 def addLTEFreqsToFrame( prdat): 
 	prdat['ltefreq_p'] = prdat.apply(lambda row: conditionalFreqSumForLTEcol(prdat[(prdat['eventname'] == row['eventname']) & 
 		(prdat['proot_d2'] == row['proot_d2'])], row['freq']), axis=1)
-	# prdat['ltefreq_e'] = prdat.apply(lambda row: conditionalFreqSumForLTEcol(prdat[prdat['portal'] == row['portal']], row['freq']), axis=1)
+	prdat['ltefreq_e'] = prdat.apply(lambda row: conditionalFreqSumForLTEcol(prdat[prdat['portal'] == row['portal']], row['freq']), axis=1)
 	return prdat
 
 
