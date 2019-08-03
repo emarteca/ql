@@ -121,6 +121,10 @@ def addBrokenToFrame( prdat, prare_e, prare_p, pconf):
 	prdat['broken'] = prdat.apply(lambda row: isAPortalEnamePairBroken(prdat[(prdat['portal'] == row['portal']) & (prdat['eventname'] == row['eventname'])], prare_e, prare_p, pconf, row['eventname'], row['portal']), axis=1)
 	return prdat
 
+def addCorrectToFrame( prdat, prare_e, prare_p, pconf):
+	prdat['correct'] = prdat.apply(lambda row: isAPortalEnamePairCorrect(prdat[(prdat['portal'] == row['portal']) & (prdat['eventname'] == row['eventname'])], prare_e, prare_p, pconf, row['eventname'], row['portal']), axis=1)
+	return prdat
+
 def isAPortalEnamePairBroken( temp, prare_e, prare_p, pconf, ename, portal):
 	# temp = df[(df['portal'] == portal) & (df['eventname'] == ename)]
 	freq_eandp = temp[['freq']].values[0][0]
@@ -131,6 +135,15 @@ def isAPortalEnamePairBroken( temp, prare_e, prare_p, pconf, ename, portal):
 	# compute the binomial cdfs with the relevant parameters
 	return ((binom.cdf( freq_sumeandp, freq_p, prare_p) < pconf) and (binom.cdf( freq_eandsump, freq_e, prare_e) < pconf))
 	# return [binom.cdf( freq_eandp, freq_p, prare), binom.cdf( freq_eandp, freq_e, prare)]
+
+def isAPortalEnamePairCorrect( temp, prare_e, prare_p, pconf, ename, portal):
+	# temp = df[(df['portal'] == portal) & (df['eventname'] == ename)]
+	freq_eandp = temp[['freq']].values[0][0]
+	freq_e = temp[['freq_e']].values[0][0]
+	freq_p = temp[['freq_p']].values[0][0]
+	# compute the binomial cdfs with the relevant parameters
+	return ((binom.cdf( (freq_p - freq_eandp), freq_p, 1 - prare_p) < pconf) and (binom.cdf( (freq_e - freq_eandp), freq_e, 1 - prare_e) < pconf)
+		and freq_eandp > 10)
 
 def addColumnForMatchingPortalEnames( df, df_to_comp, new_col_name):
 	# assume the df_to_comp has columns for 'portal' and 'eventname'
@@ -151,8 +164,7 @@ def conditionalFreqSumForLTEcol( df, val_to_comp):
 	return df[df['freq'] <= val_to_comp]['freq'].sum()
 
 def addLTEFreqsToFrame( prdat): 
-	prdat['ltefreq_p'] = prdat.apply(lambda row: conditionalFreqSumForLTEcol(prdat[(prdat['eventname'] == row['eventname']) & 
-		(prdat['proot_d2'] == row['proot_d2'])], row['freq']), axis=1)
+	prdat['ltefreq_p'] = prdat.apply(lambda row: conditionalFreqSumForLTEcol(prdat[prdat['eventname'] == row['eventname']], row['freq']), axis=1)
 	prdat['ltefreq_e'] = prdat.apply(lambda row: conditionalFreqSumForLTEcol(prdat[prdat['portal'] == row['portal']], row['freq']), axis=1)
 	return prdat
 
@@ -198,6 +210,106 @@ addBrokenToFrame(siodat, prare_e, prare_p, pconf)
 addBrokenToFrame(siocdat, prare_e, prare_p, pconf)
 addBrokenToFrame(httpdat, prare_e, prare_p, pconf)
 
-printDFToFile(fsdat[fsdat['broken']].append(netdat[netdat['broken']]).append(siodat[siodat['broken']]).append(siocdat[siocdat['broken']]).append(httpdat[httpdat['broken']]), 
-	'fs_net_sio_sioc_http_pe0.065_pp0.05_pc_0.04_diagnosis.csv')
+printDFToFile(fsdat[fsdat['broken']].append(netdat[netdat['broken']]).append(siodat[siodat['broken']]).append(siocdat[siocdat['broken']]).append(httpdat[httpdat['broken']]
+	.append(cprocdat[cprocdat['broken']]).append(zlibdat[zlibdat['broken']]).append(httpsdat[httpsdat['broken']])), 
+	'fs_net_sio_sioc_http_childproc_zlib_https_pe0.06_pp0.04_pc_0.04_diagnosis.csv')
+
+printDFToFile(fsdat[fsdat['broken'] == False].append(netdat[netdat['broken'] == False]).append(siodat[siodat['broken'] == False]).append(siocdat[siocdat['broken'] == False]).append(httpdat[httpdat['broken'] == False]), 
+	'fs_net_sio_sioc_http_pe0.06_pp0.05_pc_0.04_notflagged.csv')
+
+printDFToFile(fsdat[fsdat['broken'] == False], 'fs_pe0.06_pp0.05_pc_0.04_notflagged.csv')
+printDFToFile(netdat[netdat['broken'] == False], 'net_pe0.06_pp0.05_pc_0.04_notflagged.csv')
+printDFToFile(siodat[siodat['broken'] == False], 'sio_pe0.06_pp0.05_pc_0.04_notflagged.csv')
+printDFToFile(siocdat[siocdat['broken'] == False], 'sioc_pe0.06_pp0.05_pc_0.04_notflagged.csv')
+printDFToFile(httpdat[httpdat['broken'] == False], 'http_pe0.06_pp0.05_pc_0.04_notflagged.csv')
+
+
+
+
+from collections import Counter
+
+proots = dat['proot'].values
+pcount = Counter(proots)
+pcount.most_common(75)
+
+
+
+
+
+
+vorpaldat = dat[dat['proot'] == 'vorpal']
+nvd3dat = dat[dat['proot'] == 'nvd3']
+superagentproxydat = dat[dat['proot'] == 'superagent-proxy']
+busiodat = dat[dat['proot'] == 'bus.io']
+jsextenddat = dat[dat['proot'] == 'js-extend']
+etchdat = dat[dat['proot'] == 'etch']
+mongodbdat = dat[dat['proot'] == 'mongodb']
+protractordat = dat[dat['proot'] == 'protractor']
+hammerjsdat = dat[dat['proot'] == 'hammerjs']
+appendtreedat = dat[dat['proot'] == 'append-tree']
+sysdat = dat[dat['proot'] == 'sys']
+liedat = dat[dat['proot'] == 'lie']
+bluebirdat = dat[dat['proot'] == 'bluebird']
+sinondat = dat[dat['proot'] == 'sinon']
+webkitgtkdat = dat[dat['proot'] == 'webkitgtk']
+leapjsdat = dat[dat['proot'] == 'leapjs']
+treportdat = dat[dat['proot'] == 'treport']
+telnetdat = dat[dat['proot'] == 'telnet']
+throughdat = dat[dat['proot'] == 'through']
+fstreamdat = dat[dat['proot'] == 'fstream']
+through2dat = dat[dat['proot'] == 'through2']
+browserifydat = dat[dat['proot'] == 'browserify']
+
+jquerydat = dat[dat['proot'] == 'jquery']
+addLTEFreqsToFrame(jquerydat)
+addBrokenToFrame(jquerydat, prare_e, prare_p, pconf)
+
+addLTEFreqsToFrame(vorpaldat)
+addLTEFreqsToFrame(nvd3dat)
+addLTEFreqsToFrame(superagentproxydat)
+addLTEFreqsToFrame(busiodat)
+addLTEFreqsToFrame(jsextenddat)
+addLTEFreqsToFrame(etchdat)
+addLTEFreqsToFrame(mongodbdat)
+addLTEFreqsToFrame(protractordat)
+addLTEFreqsToFrame(hammerjsdat)
+addLTEFreqsToFrame(appendtreedat)
+addLTEFreqsToFrame(sysdat)
+addLTEFreqsToFrame(liedat)
+addLTEFreqsToFrame(bluebirdat)
+addLTEFreqsToFrame(sinondat)
+addLTEFreqsToFrame(webkitgtkdat)
+addLTEFreqsToFrame(leapjsdat)
+addLTEFreqsToFrame(treportdat)
+addLTEFreqsToFrame(telnetdat)
+addLTEFreqsToFrame(throughdat)
+addLTEFreqsToFrame(fstreamdat)
+addLTEFreqsToFrame(through2dat)
+addLTEFreqsToFrame(browserifydat)
+
+addBrokenToFrame(vorpaldat, prare_e, prare_p, pconf)
+addBrokenToFrame(nvd3dat, prare_e, prare_p, pconf)
+addBrokenToFrame(superagentproxydat, prare_e, prare_p, pconf)
+addBrokenToFrame(busiodat, prare_e, prare_p, pconf)
+addBrokenToFrame(jsextenddat, prare_e, prare_p, pconf)
+addBrokenToFrame(etchdat, prare_e, prare_p, pconf)
+addBrokenToFrame(mongodbdat, prare_e, prare_p, pconf)
+addBrokenToFrame(protractordat, prare_e, prare_p, pconf)
+addBrokenToFrame(hammerjsdat, prare_e, prare_p, pconf)
+addBrokenToFrame(appendtreedat, prare_e, prare_p, pconf)
+addBrokenToFrame(sysdat, prare_e, prare_p, pconf)
+addBrokenToFrame(liedat, prare_e, prare_p, pconf)
+addBrokenToFrame(bluebirdat, prare_e, prare_p, pconf)
+addBrokenToFrame(sinondat, prare_e, prare_p, pconf)
+addBrokenToFrame(webkitgtkdat, prare_e, prare_p, pconf)
+addBrokenToFrame(leapjsdat, prare_e, prare_p, pconf)
+addBrokenToFrame(treportdat, prare_e, prare_p, pconf)
+addBrokenToFrame(telnetdat, prare_e, prare_p, pconf)
+addBrokenToFrame(throughdat, prare_e, prare_p, pconf)
+addBrokenToFrame(fstreamdat, prare_e, prare_p, pconf)
+addBrokenToFrame(through2dat, prare_e, prare_p, pconf)
+addBrokenToFrame(browserifydat, prare_e, prare_p, pconf)
+
+
+
 
