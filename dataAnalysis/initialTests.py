@@ -145,6 +145,26 @@ def isAPortalEnamePairCorrect( temp, prare_e, prare_p, pconf, ename, portal):
 	return ((binom.cdf( (freq_p - freq_eandp), freq_p, 1 - prare_p) < pconf) and (binom.cdf( (freq_e - freq_eandp), freq_e, 1 - prare_e) < pconf)
 		and freq_eandp > 10)
 
+def categorizePortalEnamePair( temp, prare_e, prare_p, pconf, ename, portal):
+	freq_eandp = temp[['freq']].values[0][0]
+	freq_sumeandp = temp[['ltefreq_p']].values[0][0]
+	freq_eandsump = temp[['ltefreq_e']].values[0][0]
+	freq_e = temp[['freq_e']].values[0][0]
+	freq_p = temp[['freq_p']].values[0][0]	
+	if ((binom.cdf( freq_sumeandp, freq_p, prare_p) < pconf) and (binom.cdf( freq_eandsump, freq_e, prare_e) < pconf)):
+		return 'Broken'
+	elif ((binom.cdf( (freq_p - freq_eandp), freq_p, 1 - prare_p) < pconf) and (binom.cdf( (freq_e - freq_eandp), freq_e, 1 - prare_e) < pconf) and freq_eandp > 10):
+		return 'Correct'
+	else:
+		return 'Unknown'
+
+def addCatToFrame( prdat, prare_e, prare_p, pconf):
+	prdat['category'] = prdat.apply(lambda row: categorizePortalEnamePair(prdat[(prdat['portal'] == row['portal']) & (prdat['eventname'] == row['eventname'])], prare_e, prare_p, pconf, row['eventname'], row['portal']), axis=1)
+	return prdat
+
+def getCategoryFromCategorizedFrame( prdat, category):
+	return prdat[prdat['category'] == category]
+
 def addColumnForMatchingPortalEnames( df, df_to_comp, new_col_name):
 	# assume the df_to_comp has columns for 'portal' and 'eventname'
 	# and that these are the only columns we have to compare with
@@ -155,6 +175,24 @@ def processKnownPortalEnameFile( fileName):
 	result = pd.read_csv(fileName, sep = ',', header=None)
 	result.columns = ['portal', 'eventname']
 	return result
+
+# takes in a dataframe, which we have to get the list of proots from
+# count these up (i.e. list in order of most to less frequent), and then access
+# the relevant indices and return an array of these positions
+def getRootsAtFreqIndices( df, inds):
+	proots = Counter(df['proot'].values).most_common(max(inds) + 1) # get the list of roots, sorted by appearance frequency
+	return [proots[i][0] for i in inds] # get the corresponding list of roots (the [0] is since in Counter it's a tuple with the freq, but we only want the names)
+
+def getDFsFromRootIndices( df, inds):
+	return getDFsFromRootNames( df, getRootsAtFreqIndices(df, inds))
+
+# create a dictionary where the root names are keys and the values are 
+# the dataframe for that root
+def getDFsFromRootNames( df, rootNames):
+	return {name: df[df['proot'] == name] for name in rootNames} 
+
+def addLTEsToFramesInDict( dcf):
+	return {name: addLTEFreqsToFrame( df) for name, df in dcf.items()}
 
 # return the sum of frequencies of all rows where the value of 
 # a particular column is <= a specified value
@@ -167,6 +205,29 @@ def addLTEFreqsToFrame( prdat):
 	prdat['ltefreq_p'] = prdat.apply(lambda row: conditionalFreqSumForLTEcol(prdat[prdat['eventname'] == row['eventname']], row['freq']), axis=1)
 	prdat['ltefreq_e'] = prdat.apply(lambda row: conditionalFreqSumForLTEcol(prdat[prdat['portal'] == row['portal']], row['freq']), axis=1)
 	return prdat
+
+
+
+
+from collections import namedtuple
+
+Ps = namedtuple("Ps", "prare_e prare_p pconf")
+
+# start with just a list of packages, but would be trivial to change this to be a list of 
+# indices, or make it just run over all the packages
+# sample use: runTests(dat, [Ps(0.05, 0.05, 0.05)], ['fs', 'http'])
+def runTests( df, param_configs, pkgs_to_test):
+	pkg_frames = getDFsFromRootNames( df, pkgs_to_test)
+	addLTEsToFramesInDict( pkg_frames)
+	# now we need to actually run the experiment
+	# run it over all the configs provided
+	for ps in param_configs:
+		for name, pdf in pkg_frames.items():
+			addCatToFrame( pdf, ps.prare_e, ps.prare_p, ps.pconf)
+			filename = name + "_pe" + str(ps.prare_e) + "_pp" + str(ps.prare_p) + "_pc" + str(ps.pconf) + "_.csv"
+			printDFToFile( pdf, filename)
+			print("\nDone running: " + filename) 
+
 
 
 # sample usecase 
