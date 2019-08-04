@@ -201,15 +201,16 @@ def conditionalFreqSumForLTEcol( df, val_to_comp):
 	return df[df['freq'] <= val_to_comp]['freq'].sum()
 
 def addLTEFreqsToFrame( prdat): 
-	prdat = prdat.sort_values(['freq'])
+	prdat.sort_values(['freq'], inplace=True)
 	addCumFreqsToFrame(prdat, 'eventname', 'ltefreq_p')
 	addCumFreqsToFrame(prdat, 'portal', 'ltefreq_e')
+	# return prdat
 
 def addCumFreqsToFrame( prdat, col_name, out_col_name):
 	reldup = (~prdat[[col_name, 'freq']].duplicated()).astype(int)
 	prdat['intermsum'] = prdat.groupby([col_name, 'freq'])['freq'].transform('sum')*reldup
 	prdat[out_col_name] = prdat.groupby([col_name])['intermsum'].transform('cumsum')
-
+	# return prdat
 
 
 
@@ -219,17 +220,18 @@ Ps = namedtuple("Ps", "prare_e prare_p pconf")
 
 # start with just a list of packages, but would be trivial to change this to be a list of 
 # indices, or make it just run over all the packages
-# sample use: runTests(dat, [Ps(0.05, 0.05, 0.05)], ['fs', 'http'])
+# sample use: runTests(dat, [Ps(0.05, 0.05, 0.05)], ['fs', 'http', 'net'])
 def runTests( df, param_configs, pkgs_to_test):
-	pkg_frames = getDFsFromRootNames( df, pkgs_to_test)
-	addLTEsToFramesInDict( pkg_frames)
 	# now we need to actually run the experiment
 	# run it over all the configs provided
 	for ps in param_configs:
-		for name, pdf in pkg_frames.items():
-			addCatToFrame( pdf, ps.prare_e, ps.prare_p, ps.pconf)
-			filename = name + "_pe" + str(ps.prare_e) + "_pp" + str(ps.prare_p) + "_pc" + str(ps.pconf) + "_.csv"
-			printDFToFile( pdf, filename)
+		for pkg in pkgs_to_test:
+			cur_frame = df[df['proot'] == pkg]
+			addLTEFreqsToFrame(cur_frame)
+			print("Done adding LTE\n")
+			addCatToFrame( cur_frame, ps.prare_e, ps.prare_p, ps.pconf)
+			filename = pkg + "_pe" + str(ps.prare_e) + "_pp" + str(ps.prare_p) + "_pc" + str(ps.pconf) + "_.csv"
+			printDFToFile( cur_frame, filename)
 			print("\nDone running: " + filename) 
 
 
