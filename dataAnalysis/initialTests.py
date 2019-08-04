@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 from scipy.stats import binom
 import re
 
+pd.options.mode.chained_assignment = None # remove chained assignment warnings (they dont fit my use case)
+
 # given the name of a portal, split the string up to find the name of the root
 def getPortalRoot( portal):
 	return portal[ portal.index('root') + len('root ') : portal.index(')')]
@@ -118,39 +120,37 @@ def getRootSpecificDFWithBroken( df, proot, prare_e, prare_p, pconf):
 # don't use it in the above function getProbBuggyPortalEnamePairs as it would 
 # cause unnecessary temp variables of the whole dataframe 
 def addBrokenToFrame( prdat, prare_e, prare_p, pconf):
-	prdat['broken'] = prdat.apply(lambda row: isAPortalEnamePairBroken(prdat[(prdat['portal'] == row['portal']) & (prdat['eventname'] == row['eventname'])], prare_e, prare_p, pconf, row['eventname'], row['portal']), axis=1)
-	return prdat
+	prdat['broken'] = prdat.apply(isAPortalEnamePairBroken, args=(prare_e, prare_p, pconf), axis=1)
 
 def addCorrectToFrame( prdat, prare_e, prare_p, pconf):
-	prdat['correct'] = prdat.apply(lambda row: isAPortalEnamePairCorrect(prdat[(prdat['portal'] == row['portal']) & (prdat['eventname'] == row['eventname'])], prare_e, prare_p, pconf, row['eventname'], row['portal']), axis=1)
-	return prdat
+	prdat['correct'] = prdat.apply(isAPortalEnamePairCorrect, args=(prare_e, prare_p, pconf), axis=1)
 
-def isAPortalEnamePairBroken( temp, prare_e, prare_p, pconf, ename, portal):
+def isAPortalEnamePairBroken( row, prare_e, prare_p, pconf):
 	# temp = df[(df['portal'] == portal) & (df['eventname'] == ename)]
-	freq_eandp = temp[['freq']].values[0][0]
-	freq_sumeandp = temp[['ltefreq_p']].values[0][0]
-	freq_eandsump = temp[['ltefreq_e']].values[0][0]
-	freq_e = temp[['freq_e']].values[0][0]
-	freq_p = temp[['freq_p']].values[0][0]
+	freq_eandp = row['freq']
+	freq_sumeandp = row['ltefreq_p']
+	freq_eandsump = row['ltefreq_e']
+	freq_e = row['freq_e']
+	freq_p = row['freq_p']
 	# compute the binomial cdfs with the relevant parameters
 	return ((binom.cdf( freq_sumeandp, freq_p, prare_p) < pconf) and (binom.cdf( freq_eandsump, freq_e, prare_e) < pconf))
 	# return [binom.cdf( freq_eandp, freq_p, prare), binom.cdf( freq_eandp, freq_e, prare)]
 
-def isAPortalEnamePairCorrect( temp, prare_e, prare_p, pconf, ename, portal):
+def isAPortalEnamePairCorrect( row, prare_e, prare_p, pconf):
 	# temp = df[(df['portal'] == portal) & (df['eventname'] == ename)]
-	freq_eandp = temp[['freq']].values[0][0]
-	freq_e = temp[['freq_e']].values[0][0]
-	freq_p = temp[['freq_p']].values[0][0]
+	freq_eandp = row['freq']
+	freq_e = row['freq_e']
+	freq_p = row['freq_p']
 	# compute the binomial cdfs with the relevant parameters
 	return ((binom.cdf( (freq_p - freq_eandp), freq_p, 1 - prare_p) < pconf) and (binom.cdf( (freq_e - freq_eandp), freq_e, 1 - prare_e) < pconf)
 		and freq_eandp > 10)
 
-def categorizePortalEnamePair( temp, prare_e, prare_p, pconf, ename, portal):
-	freq_eandp = temp[['freq']].values[0][0]
-	freq_sumeandp = temp[['ltefreq_p']].values[0][0]
-	freq_eandsump = temp[['ltefreq_e']].values[0][0]
-	freq_e = temp[['freq_e']].values[0][0]
-	freq_p = temp[['freq_p']].values[0][0]	
+def categorizePortalEnamePair( row, prare_e, prare_p, pconf):
+	freq_eandp = row['freq']
+	freq_sumeandp = row['ltefreq_p']
+	freq_eandsump = row['ltefreq_e']
+	freq_e = row['freq_e']
+	freq_p = row['freq_p']
 	if ((binom.cdf( freq_sumeandp, freq_p, prare_p) < pconf) and (binom.cdf( freq_eandsump, freq_e, prare_e) < pconf)):
 		return 'Broken'
 	elif ((binom.cdf( (freq_p - freq_eandp), freq_p, 1 - prare_p) < pconf) and (binom.cdf( (freq_e - freq_eandp), freq_e, 1 - prare_e) < pconf) and freq_eandp > 10):
@@ -159,8 +159,7 @@ def categorizePortalEnamePair( temp, prare_e, prare_p, pconf, ename, portal):
 		return 'Unknown'
 
 def addCatToFrame( prdat, prare_e, prare_p, pconf):
-	prdat['category'] = prdat.apply(lambda row: categorizePortalEnamePair(prdat[(prdat['portal'] == row['portal']) & (prdat['eventname'] == row['eventname'])], prare_e, prare_p, pconf, row['eventname'], row['portal']), axis=1)
-	return prdat
+	prdat['category'] = prdat.apply(categorizePortalEnamePair, args=(prare_e, prare_p, pconf), axis=1)
 
 def getCategoryFromCategorizedFrame( prdat, category):
 	return prdat[prdat['category'] == category]
@@ -202,9 +201,14 @@ def conditionalFreqSumForLTEcol( df, val_to_comp):
 	return df[df['freq'] <= val_to_comp]['freq'].sum()
 
 def addLTEFreqsToFrame( prdat): 
-	prdat['ltefreq_p'] = prdat.apply(lambda row: conditionalFreqSumForLTEcol(prdat[prdat['eventname'] == row['eventname']], row['freq']), axis=1)
-	prdat['ltefreq_e'] = prdat.apply(lambda row: conditionalFreqSumForLTEcol(prdat[prdat['portal'] == row['portal']], row['freq']), axis=1)
-	return prdat
+	prdat = prdat.sort_values(['freq'])
+	addCumFreqsToFrame(prdat, 'eventname', 'ltefreq_p')
+	addCumFreqsToFrame(prdat, 'portal', 'ltefreq_e')
+
+def addCumFreqsToFrame( prdat, col_name, out_col_name):
+	reldup = (~prdat[[col_name, 'freq']].duplicated()).astype(int)
+	prdat['intermsum'] = prdat.groupby([col_name, 'freq'])['freq'].transform('sum')*reldup
+	prdat[out_col_name] = prdat.groupby([col_name])['intermsum'].transform('cumsum')
 
 
 
