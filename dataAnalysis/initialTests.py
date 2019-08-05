@@ -5,6 +5,7 @@ from scipy.stats import binom
 import re
 from collections import namedtuple
 from collections import Counter
+import csv
 
 pd.options.mode.chained_assignment = None # remove chained assignment warnings (they dont fit my use case)
 
@@ -39,6 +40,16 @@ def printDFToFile( df, filename):
 	f.write(df.to_csv(index = False))
 	f.close()
 
+# print the results in the "category" column labelled as the category specified 
+# out to a file (either appending or replacing the entire contents of the file, as specified by the optional "append" argument)
+# we're printing in the format to match the output of the corresponding QL query, so
+# as a list of (portal, eventname) pairs, pre/suffixed with "", and without printing the headers
+def printCatResultsToFile(df, filename, category, append=True):
+	write_mode = 'a' if append else 'w'
+	f = open(filename, write_mode)
+	toprint = df[df['category'] == category][['portal', 'eventname']]
+	f.write(toprint.to_csv(index=False, header=False, quoting=csv.QUOTE_ALL))
+	f.close()
 
 # ------------------------------------------------------------------------------------------------------------------------------------- graphing
 
@@ -182,13 +193,18 @@ def runTests( df, param_configs, pkgs_to_test):
 	# now we need to actually run the experiment
 	# run it over all the configs provided, for each package listed
 	for ps in param_configs:
+		filename = "pe" + str(ps.prare_e) + "_pp" + str(ps.prare_p) + "_pc" + str(ps.pconf) + "_.csv"
+		append = False
 		for pkg in pkgs_to_test:
 			cur_frame = df[df['proot'] == pkg]
 			addLTEFreqsToFrame(cur_frame)
 			print("Done adding LTE\n")
 			addCatToFrame( cur_frame, ps.prare_e, ps.prare_p, ps.pconf)
-			filename = pkg + "_pe" + str(ps.prare_e) + "_pp" + str(ps.prare_p) + "_pc" + str(ps.pconf) + "_.csv"
-			printDFToFile( cur_frame, filename)
+			# printDFToFile( cur_frame, filename)
+			printCatResultsToFile(cur_frame, "correct_" + filename, "Correct", append)
+			printCatResultsToFile(cur_frame, "broken_" + filename, "Broken", append)
+			printCatResultsToFile(cur_frame, "unknown_" + filename, "Unknown", append)
+			append = True
 			print("Done running: " + filename + "\n") 
 
 
