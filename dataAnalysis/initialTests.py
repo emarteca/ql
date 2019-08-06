@@ -190,12 +190,11 @@ Ps = namedtuple("Ps", "prare_e prare_p pconf")
 # start with just a list of packages, but would be trivial to change this to be a list of 
 # indices, or make it just run over all the packages
 # sample use: runTests(dat, [Ps(0.05, 0.05, 0.05)], ['fs', 'http', 'net'])
-def runTests( df, param_configs, pkgs_to_test):
+def runTests( df, param_configs, pkgs_to_test, append = False):
 	# now we need to actually run the experiment
 	# run it over all the configs provided, for each package listed
 	for ps in param_configs:
 		filename = "pe" + str(ps.prare_e) + "_pp" + str(ps.prare_p) + "_pc" + str(ps.pconf) + "_.csv"
-		append = False
 		for pkg in pkgs_to_test:
 			cur_frame = df[df['proot'] == pkg]
 			addLTEFreqsToFrame(cur_frame)
@@ -209,8 +208,12 @@ def runTests( df, param_configs, pkgs_to_test):
 			append = True
 			print("Done running: " + filename + "\n") 
 
+# "struct" for the results of the stats computed for each run (i.e. for a particular parameter configuration)
 ExpStats = namedtuple("ExpStats", "diagnosed root_results overall_TP_count overall_FP_count overall_TP_rate overall_FP_rate")
 
+# compute a set of stats about true and false positives, overall and per package
+# given a dataframe of the ground truth for both broken and correct pairs, and use this to measure the correctness
+# of our computed results, also passed in as dataframes
 def computeStats( computed_broken, computed_correct, known_broken, known_correct):
 	diagnosed = pd.merge(computed_broken, known_broken, how='left',indicator='True_positive')
 	diagnosed.columns = ['portal','eventname', 'True_positive']
@@ -221,19 +224,40 @@ def computeStats( computed_broken, computed_correct, known_broken, known_correct
 	# what are some interesting stats?
 	# add the portal root so we can get data by root, easily
 	diagnosed['proot'] = diagnosed['portal'].apply(getPortalRoot)
+	diagnosed['root_count'] = diagnosed.groupby(['proot'])['True_positive'].transform('count')
 	diagnosed['root_TP_count'] = diagnosed.groupby(['proot'])['True_positive'].transform('sum')
 	diagnosed['root_FP_count'] = diagnosed.groupby(['proot'])['False_positive'].transform('sum')
 	diagnosed['root_TP_rate'] = diagnosed['root_TP_count']/diagnosed.groupby(['proot'])['True_positive'].transform('count')  # rate = # / total calculated
 	diagnosed['root_FP_rate'] = diagnosed['root_FP_count']/diagnosed.groupby(['proot'])['False_positive'].transform('count')
 	# get root specific results
-	root_results = diagnosed[['proot', 'root_TP_count', 'root_FP_count','root_TP_rate','root_FP_rate']].drop_duplicates()
+	root_results = diagnosed[['proot', 'root_count', 'root_TP_count', 'root_FP_count','root_TP_rate','root_FP_rate']].drop_duplicates()
 	# get global results
 	overall_TP_count = root_results['root_TP_count'].sum()
 	overall_FP_count = root_results['root_FP_count'].sum()
-	overall_TP_rate = root_results['root_TP_rate'].mean()
-	overall_FP_rate = root_results['root_FP_rate'].mean()
+	overall_TP_rate = overall_TP_count/diagnosed['proot'].count() # diagnosed['proot'].count() is just the total number of results
+	overall_FP_rate = overall_FP_count/diagnosed['proot'].count() 
 	# return set of results
 	return ExpStats(diagnosed, root_results, overall_TP_count, overall_FP_count, overall_TP_rate, overall_FP_rate)
+
+# this function takes in a list of (ps_stats.overall_FP_rate, ps_stats, and ps)
+# in addition to the packages to test over and column name to examine and sort by
+def getRootSpecificSortedResults( list_of_results, pkgs_to_test, col_name1, col_name2):
+	# first, extract the (root_results, ps) pairs we want	
+	root_res_ps_list = [(k[1].root_results, k[1].diagnosed['proot'].count(), k[2]) for k in list_of_results]
+	root_dict = {}
+	for pkg in pkgs_to_test:
+		sorted_res = [(getColValSpecIfNone(k[0], pkg, col_name1, np.inf), 
+			getColValSpecIfNone(k[0], pkg, col_name2,0), k[1]) for k in root_res_ps_list]
+		sorted_res.sort()
+		root_dict[pkg] = sorted_res
+	return root_dict
+
+# get the column element if it exists, otherwise return a specified error value (ex. np.NaN, np.inf, 0, or whatever fits)
+def getColValSpecIfNone( root_df, root, col_name, error_val):
+	try:
+		return root_df[root_df['proot'] == root][col_name].values[0]
+	except IndexError as e:
+		return error_val
 
 def getExperimentStats( param_configs, known_correct, known_broken):
 	# compute stats for each run
@@ -241,12 +265,13 @@ def getExperimentStats( param_configs, known_correct, known_broken):
 	# at the end, can probably order the list by different metrics 
 	results = []
 	for ps in param_configs:
+		print("Analyzing: " + str(ps) + "\n")
 		filename = "pe" + str(ps.prare_e) + "_pp" + str(ps.prare_p) + "_pc" + str(ps.pconf) + "_.csv"
 		computed_correct = pd.read_csv("correct_" + filename, sep=',', header=None)
 		computed_broken = pd.read_csv("broken_" + filename, sep=',', header=None)
 		ps_stats = computeStats( computed_broken, computed_correct, known_broken, known_correct)
-		results += [(ps_stats.overall_FP_rate, ps)]
-	return results.sort() # automatically sorts by the first tuple element, which is the FP rate
+		results += [(ps_stats.overall_FP_rate, ps_stats, ps)]
+	return sorted(results, key = lambda x: x[0])  # sort by the first tuple element, which is the FP rate
 
 # sample usecase 
 def main():
@@ -263,6 +288,12 @@ def main():
 
 	pkgs_to_test = ['fs', 'http', 'net', 'child_process', 'zlib', 'https', 'socket.io', 'socket.io-client']
 	runTests(dat, param_configs, pkgs_to_test)
+
+	known_correct = pd.read_csv('correct.out', sep=',', header=None)
+	known_broken = pd.read_csv('broken.out', sep=',', header=None)
+
+	results = getExperimentStats( param_configs, known_correct, known_broken)
+	root_spec_FP_res = getRootSpecificSortedResults(results, pkgs_to_test, 'root_FP_rate', 'root_count')
 
 	print("Done the tests!")
 
