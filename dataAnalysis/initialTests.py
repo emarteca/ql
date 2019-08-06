@@ -6,6 +6,7 @@ import re
 from collections import namedtuple
 from collections import Counter
 import csv
+import itertools
 
 pd.options.mode.chained_assignment = None # remove chained assignment warnings (they dont fit my use case)
 
@@ -13,7 +14,7 @@ pd.options.mode.chained_assignment = None # remove chained assignment warnings (
 # ----------------------------------------------------------------------------------------------------------------------- processing functions
 # given the name of a portal, split the string up to find the name of the root
 def getPortalRoot( portal):
-	return portal[ portal.index('root') + len('root ') : portal.index(')')]
+	return portal[ portal.index('root') + len('root https://www.npmjs.com/package/') : portal.index(')')]
 
 # given a csv of (root, portal, eventname, projcount) pairs, process it into a dataframe of the correct shape
 # named columns, and including the portal root as a column
@@ -198,6 +199,7 @@ def runTests( df, param_configs, pkgs_to_test):
 		for pkg in pkgs_to_test:
 			cur_frame = df[df['proot'] == pkg]
 			addLTEFreqsToFrame(cur_frame)
+			print("On package: " + pkg + "\n")
 			print("Done adding LTE\n")
 			addCatToFrame( cur_frame, ps.prare_e, ps.prare_p, ps.pconf)
 			# printDFToFile( cur_frame, filename)
@@ -207,7 +209,44 @@ def runTests( df, param_configs, pkgs_to_test):
 			append = True
 			print("Done running: " + filename + "\n") 
 
+ExpStats = namedtuple("ExpStats", "diagnosed root_results overall_TP_count overall_FP_count overall_TP_rate overall_FP_rate")
 
+def computeStats( computed_broken, computed_correct, known_broken, known_correct):
+	diagnosed = pd.merge(computed_broken, known_broken, how='left',indicator='True_positive')
+	diagnosed.columns = ['portal','eventname', 'True_positive']
+	diagnosed['True_positive'] = np.where(diagnosed.True_positive == 'both', 1, 0)
+	diagnosed['False_positive'] = pd.merge(computed_broken, known_correct, how='left',indicator='False_positive')['False_positive']
+	diagnosed['False_positive'] = np.where(diagnosed.False_positive == 'both', 1, 0)
+	# now, the "diagnosed" dataframe has the list of true and false positives
+	# what are some interesting stats?
+	# add the portal root so we can get data by root, easily
+	diagnosed['proot'] = diagnosed['portal'].apply(getPortalRoot)
+	diagnosed['root_TP_count'] = diagnosed.groupby(['proot'])['True_positive'].transform('sum')
+	diagnosed['root_FP_count'] = diagnosed.groupby(['proot'])['False_positive'].transform('sum')
+	diagnosed['root_TP_rate'] = diagnosed['root_TP_count']/diagnosed.groupby(['proot'])['True_positive'].transform('count')  # rate = # / total calculated
+	diagnosed['root_FP_rate'] = diagnosed['root_FP_count']/diagnosed.groupby(['proot'])['False_positive'].transform('count')
+	# get root specific results
+	root_results = diagnosed[['proot', 'root_TP_count', 'root_FP_count','root_TP_rate','root_FP_rate']].drop_duplicates()
+	# get global results
+	overall_TP_count = root_results['root_TP_count'].sum()
+	overall_FP_count = root_results['root_FP_count'].sum()
+	overall_TP_rate = root_results['root_TP_rate'].mean()
+	overall_FP_rate = root_results['root_FP_rate'].mean()
+	# return set of results
+	return ExpStats(diagnosed, root_results, overall_TP_count, overall_FP_count, overall_TP_rate, overall_FP_rate)
+
+def getExperimentStats( param_configs, known_correct, known_broken):
+	# compute stats for each run
+	# then, keep a running track of the returned ExpStats
+	# at the end, can probably order the list by different metrics 
+	results = []
+	for ps in param_configs:
+		filename = "pe" + str(ps.prare_e) + "_pp" + str(ps.prare_p) + "_pc" + str(ps.pconf) + "_.csv"
+		computed_correct = pd.read_csv("correct_" + filename, sep=',', header=None)
+		computed_broken = pd.read_csv("broken_" + filename, sep=',', header=None)
+		ps_stats = computeStats( computed_broken, computed_correct, known_broken, known_correct)
+		results += [(ps_stats.overall_FP_rate, ps)]
+	return results.sort() # automatically sorts by the first tuple element, which is the FP rate
 
 # sample usecase 
 def main():
@@ -217,8 +256,12 @@ def main():
 	print("Done reading in the data\n\n")
 	
 	# then, set up an experiment and run it
-	param_configs = [Ps(0.05, 0.05, 0.05)]
-	pkgs_to_test = ['fs', 'http', 'net']
+	# param_configs = [Ps(0.05, 0.05, 0.05), Ps(0.05, 0.01, 0.02)]
+	configs = [0.02, 0.04, 0.06, 0.1]
+	# run the experiment over every permutation of these parameters
+	param_configs = [Ps(cs[0], cs[1], cs[2]) for cs in list(itertools.product(configs,repeat=3))]
+
+	pkgs_to_test = ['fs', 'http', 'net', 'child_process', 'zlib', 'https', 'socket.io', 'socket.io-client']
 	runTests(dat, param_configs, pkgs_to_test)
 
 	print("Done the tests!")
